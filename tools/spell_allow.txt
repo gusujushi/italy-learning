@@ -1,0 +1,83 @@
+# 拼写质检白名单：这些"未登录词"不是拼写错误。每行一个，# 后为说明。
+
+# —— 读音规则表里的字母组合（不是单词）——
+cia
+cio
+ciu
+cu
+ga
+ge
+ghe
+ghi
+gi      # 字母 g 的名称
+gia
+gio
+giu
+gn
+gu
+qu
+zz
+enne    # 字母 n 的名称
+emme    # 字母 m 的名称
+
+# —— 专有名词 / 外来词 ——
+apelle  # 绕口令里的人名 Apelle
+shanghai
+ming
+li
+trento
+trentini
+trentatré
+trotterellando
+pecorino
+navona
+
+# —— 现代词 / 品牌 / 缩写（词典未收录，但是正确用法）——
+audioguida   # 语音导览
+l'audioguida
+un'audioguida
+frecciarossa # 意大利高速列车品牌 Frecciarossa
+cin          # 碰杯 cin cin
+wi           # Wi-Fi
+fi           # Wi-Fi
+pin          # PIN 密码
+
+# —— 缩合介词 / 冠词表里的省音词缀与构词后缀（不是单词）——
+all
+bell
+dall
+dell
+nell
+sull
+tore
+trice
+iat
+
+# —— 第 59 天专门讲解的聊天缩写（故意不是标准拼写）——
+cmq
+grz
+gz
+nn
+qlc
+qlcs
+tvb
+tvtb
+xché
+xké
+
+# —— 拟声词 / 品牌 ——
+ahah          # 笑声
+trenitalia    # 意大利国家铁路公司
+
+# —— 中文问候语（第 73 天：中意对比）——
+ni
+hao
+
+# —— 英语引文 / 考试缩写 / 口头语 / 错误对照表里"故意写错"的词 ——
+and       # 第 86 天：讲解 e 与 and
+straw     # 第 88 天：问 "straw hat" 怎么说
+hat
+boh       # 口头语（耸肩）
+cils      # 意大利语证书 CILS
+plida     # 意大利语证书 PLIDA
+perche    # 第 86 天"错误对照表"里故意写成无重音的错误形式

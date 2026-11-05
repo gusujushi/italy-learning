@@ -199,3 +199,20 @@ test('ExGen：rangeTest 题量与去重', () => {
   assert.ok(t.length > 0 && t.length <= 20);
   assert.equal(new Set(t.map(x => x.id)).size, t.length);
 });
+
+test('语法例句 eg 写成字符串数组时，每个例句各自解析（不会被合并成一行）', () => {
+  const d = Course.day(1);
+  const g = d.gram.find(x => x.h.indexOf('该用哪一句') === 0);
+  assert.ok(g, '第 1 课应有「该用哪一句问候？」');
+  assert.equal(g.eg.length, 2);
+  assert.equal(g.eg[0].it, 'Ciao! Come stai?');
+  assert.equal(g.eg[1].it, 'Buongiorno! Come sta?');
+  assert.ok(!/Buongiorno/.test(g.eg[0].zh), '第二句不应混进第一句的中文里');
+  // 全部课程：每个例句都有意大利语和中文，且意大利语里没有汉字
+  for (let n = 1; n <= 90; n++) {
+    Course.day(n).gram.forEach(x => x.eg.forEach(e => {
+      assert.ok(e.it && e.zh, `第 ${n} 课例句缺字段：${JSON.stringify(e)}`);
+      assert.ok(!/[㐀-鿿]/.test(e.it), `第 ${n} 课例句的意大利语里有汉字：${e.it}`);
+    }));
+  }
+});

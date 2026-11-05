@@ -14,7 +14,9 @@
   // ---------- 紧凑格式解析 ----------
 
   function lines(s) {
-    return String(s || '').split('\n').map(x => x.trim()).filter(x => x && !x.startsWith('#'));
+    // 既接受多行字符串，也接受字符串数组（语法例句 eg 写成数组）
+    const raw = Array.isArray(s) ? s.map(String) : String(s || '').split('\n');
+    return raw.map(x => x.trim()).filter(x => x && !x.startsWith('#'));
   }
 
   /** "意大利语 | 中文 | 备注" → {it, zh, x} */
@@ -135,6 +137,9 @@
     return state.seen;
   }
 
+  /** 这个词条第一次出现在第几天（复习卡只在那一天生成） */
+  function firstDayOf(v) { return firstSeen().get(vkey(v)); }
+
   /** 词汇 / 关键句索引 → 复习卡片（重复出现的词只在首次出现的那天生成卡片） */
   function cardsOf(n) {
     const d = day(n);
@@ -150,6 +155,7 @@
 
   function cardById(id) {
     const [kind, ds, is] = id.split(':');
+    if (kind !== 'v' && kind !== 's') return null;
     const d = day(+ds);
     if (!d) return null;
     if (kind === 'v') { const v = d.vocab[+is]; return v ? { id, kind, day: +ds, it: v.it, zh: v.zh, ph: v.ph } : null; }
@@ -197,7 +203,7 @@
 
   return {
     setMeta, add, has, day, total, meta, islandOf, phaseOf, islandDays,
-    cardsOf, cardById, gloss, speakables,
+    cardsOf, cardById, firstDayOf, gloss, speakables,
     _parse: { lines, pair, parseDlg, parseVocab, parseText, parseQuiz, parseDay },
   };
 });

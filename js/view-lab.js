@@ -95,12 +95,10 @@
   const FN = { letters: tabLetters, rules: tabRules, pairs: tabPairs, stress: tabStress, twisters: tabTwisters };
 
   root.Views.lab = function (el, tab) {
-    clear(el);
     if (!FN[tab]) tab = 'letters';
-    el.append(h('header', { class: 'lbar' },
-      h('div', { class: 'ttl' }, h('small', { text: 'Laboratorio di pronuncia' }), h('b', { text: '发音实验室' }))));
+    el.append(h('div', null, h('h1', { text: '发音室' }), h('p', { class: 'muted', text: 'Laboratorio di pronuncia · 字母、拼读规则、听辨、重音、绕口令' })));
     el.append(h('nav', { class: 'subtabs', 'aria-label': '发音分类' }, TABS.map(t => h('a', { class: t[0] === tab ? 'on' : '', href: '#/lab/' + t[0], text: t[1] }))));
-    const box = h('div', { class: 'pad' });
+    const box = h('div');
     el.append(box);
     FN[tab](box);
   };

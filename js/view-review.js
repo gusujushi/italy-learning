@@ -1,91 +1,68 @@
-/* 复习：间隔重复卡片 */
+/* 复习日（每 5 天一次）：回顾前 4 天学过的课，做一套综合测验，≥ 60 分通关。 */
 (function (root) {
   'use strict';
   const h = UI.h, clear = UI.clear;
   root.Views = root.Views || {};
 
-  root.Views.review = function (el, q) {
-    clear(el);
-    const mode = (q && q.get && q.get('mode')) || 'due';
-    const titles = { due: '到期复习', wrong: '错题重练', random: '随机巩固' };
-    el.append(h('header', { class: 'lbar' },
-      h('a', { class: 'icon-btn', href: '#/', 'aria-label': '返回', text: '←' }),
-      h('div', { class: 'ttl' }, h('small', { text: 'Ripasso' }), h('b', { text: '复习 · ' + (titles[mode] || titles.due) }))));
-    const box = h('div', { class: 'pad' });
-    el.append(box);
-
-    let ids;
-    if (mode === 'wrong') ids = Store.wrongCardIds(20);
-    else if (mode === 'random') ids = Ita.shuffle(Store.allCardIds()).slice(0, 15);
-    else ids = Store.dueIds(30);
-
-    if (!ids.length) {
-      const total = Store.cardCount();
-      box.append(h('div', { class: 'empty' },
-        h('div', { class: 'big', text: total ? '🎉 今天没有要复习的卡片' : '📭 还没有复习卡片' }),
-        h('p', { class: 'muted', text: total ? '间隔复习会在合适的时间把卡片再带回来。想多练一点？' : '通过一天的小测（≥60%）后，当天的词汇和关键句会自动变成复习卡片。' }),
-        h('div', { class: 'row gap wrap center' },
-          total ? h('a', { class: 'btn primary', href: '#/review?mode=random', text: '随机巩固 15 张' }) : null,
-          Store.wrongCardIds(1).length ? h('a', { class: 'btn', href: '#/review?mode=wrong', text: '练习错题' }) : null,
-          h('a', { class: 'btn ghost', href: '#/', text: '回到地图' }))));
+  root.Views.review = function (el, day) {
+    const info = App.todayInfo();
+    const e = info.ctx.list[day - 1];
+    el.append(App.backbar('第 ' + day + ' 天 · 复习日'));
+    if (!e || e.type !== 'review') {
+      el.append(h('div', { class: 'card empty' }, h('div', { class: 'big', text: '第 ' + day + ' 天不是复习日' }), h('a', { class: 'btn primary', href: '#/map', text: '看学习地图' })));
       return;
     }
+    const lessons = e.lessons.filter(n => Course.has(n));
+    const hex = W.hexOf(lessons[0] || 1);
+    el.style.setProperty('--h', (Course.islandOf(lessons[0] || 1) || { hue: 200 }).hue);
+    const prev = Store.reviewInfo(day);
+    const due = Store.dueCount();
+    const size = Math.min(30, 12 + 4 * lessons.length);
 
-    const queue = ids.map(id => Course.cardById(id)).filter(Boolean);
-    const total = queue.length;
-    let done = 0, good = 0;
-    const grades = [0, 0, 0, 0];
+    const stack = h('div', { class: 'stack' });
+    el.append(stack);
+    stack.append(h('header', { class: 'lesson-head' },
+      h('div', { class: 'small', text: W.fmtDate(Plan.dateOfDay(info.p.start, day)) + (info.day === day ? ' · 今天' : '') }),
+      h('h1', { text: '第 ' + day + ' 天 · 复习日 🔁' }),
+      h('div', { text: '回顾第 ' + Plan.rangeLabel(lessons) + ' 课，做一套 ' + size + ' 题的综合测验（≥ 60 分通关）。' }),
+      prev ? h('p', { class: 'small', style: { margin: '6px 0 0' }, text: '✓ 已通关，最好成绩 ' + prev.best + ' 分。还可以再测一次刷新成绩。' }) : null));
 
-    function show() {
-      clear(box);
-      if (!queue.length) return summary();
-      const c = queue[0];
-      if (!c.dir) c.dir = c.kind === 'v' && Math.random() < 0.5 ? 'it2zh' : 'zh2it';
-      const itFront = c.dir === 'it2zh';
-      const frontEl = itFront
-        ? h('div', null, h('div', { class: 'it big', lang: 'it', text: c.it }), c.ph ? h('div', { class: 'ph', text: c.ph }) : null,
-          h('button', { class: 'btn round', type: 'button', 'aria-label': '播放', onclick: () => Sound.play(c.it), text: '🔊' }))
-        : h('div', { class: 'zh big', text: c.zh });
-      const back = h('div', { class: 'rback', hidden: true },
-        itFront ? h('div', { class: 'zh big', text: c.zh })
-          : h('div', null, h('div', { class: 'it big', lang: 'it', text: c.it }), c.ph ? h('div', { class: 'ph', text: c.ph }) : null,
-            h('button', { class: 'btn round', type: 'button', 'aria-label': '播放', onclick: () => Sound.play(c.it), text: '🔊' })));
-      const rate = h('div', { class: 'rate4', hidden: true },
-        [['不会', 0, 'r0'], ['模糊', 1, 'r1'], ['记得', 2, 'r2'], ['很熟', 3, 'r3']].map(([t, v, cls]) =>
-          h('button', { type: 'button', class: 'btn ' + cls, text: t, onclick: () => grade(c, v) })));
-      const reveal = h('button', { class: 'btn primary lg', type: 'button', text: '显示答案', onclick: () => {
-        reveal.hidden = true; back.hidden = false; rate.hidden = false;
-        if (!itFront) Sound.play(c.it);
-      } });
-      box.append(
-        h('div', { class: 'ex-top' }, h('div', { class: 'bar' }, h('i', { style: { width: Math.round(100 * done / total) + '%' } })), h('span', { class: 'cnt', text: done + ' / ' + total })),
-        h('div', { class: 'rcard' },
-          h('div', { class: 'rmeta', text: (c.kind === 'v' ? '词汇' : '句子') + ' · 第 ' + c.day + ' 天' + (itFront ? ' · 看意大利语想意思' : ' · 看中文想意大利语') }),
-          frontEl, back),
-        reveal, rate);
-      if (itFront) setTimeout(() => Sound.play(c.it), 200);
+    stack.append(h('section', { class: 'card' },
+      h('h3', null, '先回顾', h('small', { text: '  Ripasso' })),
+      h('p', { class: 'muted small', text: '测验前花 10–15 分钟：把这几课的对话再听一遍，重点是你觉得生疏的。' }),
+      h('div', { class: 'stack' }, lessons.map(n => {
+        const d = Course.day(n);
+        return h('div', { class: 'task', style: { '--c': hex } },
+          h('div', { class: 'num' }, h('span', null, h('small', { text: '第' }), h('br'), n + '课')),
+          h('div', { style: { flex: 1, minWidth: 0 } },
+            h('div', { class: 'row between' }, h('b', { class: 'it', lang: 'it', text: d.it }), Store.bestScore(n) ? h('span', { class: 'chip', text: '闯关 ' + Store.bestScore(n) + ' 分' }) : h('span', { class: 'chip', text: Store.lessonDone(n) ? '已学完' : '还没学完' })),
+            h('div', { class: 'zh', text: d.zh }),
+            h('div', { class: 'row gap wrap', style: { marginTop: '6px' } },
+              h('a', { class: 'btn sm', href: '#/lesson/' + n + '/words', text: '🔤 词汇' }),
+              h('a', { class: 'btn sm', href: '#/lesson/' + n + '/read', text: '🔍 精读' }),
+              h('a', { class: 'btn sm', href: '#/lesson/' + n + '/shadow', text: '🗣️ 跟读' }))));
+      })),
+      due ? h('a', { class: 'banner', style: { marginTop: '12px' }, href: '#/words/review?mode=due', text: '🔁 另外有 ' + due + ' 张到期生词卡，建议先复习 ›' }) : null));
+
+    const area = h('section', { class: 'card' });
+    function start() {
+      const rnd = Ita.mulberry32((Date.now() / 1000 | 0) + day);
+      ExerciseUI.run(area, ExGen.listTest(lessons, rnd, size), { title: '复习', doneLabel: '查看成绩', retry: start, onContinue: sum => result(sum) });
     }
-
-    function grade(c, v) {
-      Sound.stop();
-      Store.gradeCard(c.id, v);
-      grades[v]++;
-      queue.shift();
-      if (v === 0) { c.retries = (c.retries || 0) + 1; if (c.retries <= 2) { c.dir = null; queue.push(c); } else done++; }
-      else { done++; if (v >= 2) good++; }
-      show();
-    }
-
-    function summary() {
-      box.append(h('div', { class: 'summary' },
-        h('div', { class: 'ring', style: { '--p': Math.round(100 * good / total) } }, h('b', { text: Math.round(100 * good / total) + '%' }), h('small', { text: good + '/' + total })),
-        h('p', { class: 'big', text: '本轮完成！' }),
-        h('p', { class: 'muted', text: '不会 ' + grades[0] + ' · 模糊 ' + grades[1] + ' · 记得 ' + grades[2] + ' · 很熟 ' + grades[3] }),
+    function result(sum) {
+      const fin = Store.finishReview(day, sum.pct);
+      clear(area);
+      area.append(h('div', { class: 'result' },
+        h('div', { class: 'big-stars', text: UI.stars(Store.starsFor(sum.pct)) }),
+        h('p', { class: 'big', text: fin.passed ? (fin.first ? '🎉 复习日通关！' : '成绩已更新') : '还差一点——回顾一下再试' }),
+        h('p', { class: 'muted', text: '正确率 ' + sum.pct + '%（' + sum.correct + '/' + sum.total + '）' + (fin.passed ? '' : ' · ≥ 60 分通关') }),
         h('div', { class: 'row gap wrap center' },
-          Store.dueCount() ? h('a', { class: 'btn primary', href: '#/review', text: '继续复习（还有 ' + Store.dueCount() + ' 张）' }) : null,
-          grades[0] ? h('a', { class: 'btn', href: '#/review?mode=wrong', text: '练习错题' }) : null,
-          h('a', { class: 'btn ghost', href: '#/', text: '回到地图' }))));
+          h('button', { class: 'btn ghost', type: 'button', onclick: start, text: '再测一次' }),
+          h('a', { class: 'btn primary', href: '#/', text: '回到今日学习' }),
+          h('a', { class: 'btn', href: '#/map', text: '看学习地图' }))));
     }
-    show();
+    stack.append(area);
+    area.append(h('h3', null, '综合测验', h('small', { text: '  Prova' })), h('p', { text: '题目覆盖这几课的词汇、听力、填空、听写、排序和翻译，每次不同。' }),
+      h('button', { class: 'btn primary lg', type: 'button', text: prev ? '再测一次' : '开始测验', onclick: () => { clear(area); start(); } }));
   };
 })(window);

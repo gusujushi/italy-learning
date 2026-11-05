@@ -198,15 +198,28 @@
     return compose(b, { lc: 2, vc: 2, cz: 2, dc: 1, od: 1, tr: 1, qz: 1 }, FILL, size);
   }
 
-  /** 岛屿关卡（20 题）/ 阶段毕业考（30 题）：覆盖该范围的所有天 */
-  function rangeTest(from, to, rnd, size) {
+  /** 一组课（课号列表）的综合测验：复习日、岛屿关卡、阶段毕业考都用它。size 默认 20 题 */
+  function listTest(nums, rnd, size) {
     rnd = rnd || rnd0; size = size || 20;
-    const days = [];
-    for (let n = from; n <= to; n++) { const d = Course.day(n); if (d) days.push(d); }
+    const days = nums.map(n => Course.day(n)).filter(Boolean);
     const b = buckets(days, rnd);
     const k = size / 20;
     return compose(b, { lc: Math.round(3 * k), vc: Math.round(3 * k), cz: Math.round(3 * k), dc: Math.round(3 * k),
       od: Math.round(2 * k), tr: Math.round(2 * k), qz: Math.round(3 * k), mt: 1 }, FILL, size);
+  }
+
+  /** 岛屿关卡（20 题）/ 阶段毕业考（30 题）：覆盖该范围的所有天 */
+  function rangeTest(from, to, rnd, size) {
+    const nums = [];
+    for (let n = from; n <= to; n++) nums.push(n);
+    return listTest(nums, rnd, size);
+  }
+
+  /** 词汇小练习：配对 ×1、看中文选意语 ×3、听音选义 ×2 */
+  function wordSet(n, rnd) {
+    const d = Course.day(n); rnd = rnd || rnd0;
+    const b = buckets([d], rnd, d);
+    return b.mt.slice(0, 1).concat(b.vc.slice(0, 3), b.lc.slice(0, 2));
   }
 
   /** 听 · 理解题（手写） */
@@ -230,7 +243,7 @@
   }
 
   return {
-    dayTest, rangeTest, listenQs, readSet, learnQuiz, writeSet,
+    dayTest, rangeTest, listTest, wordSet, listenQs, readSet, learnQuiz, writeSet,
     _x: { listenChoose, vocabChoose, dictation, order, translate, cloze, blankIndex, buckets, compose, fromQuiz, mkOptions },
   };
 });

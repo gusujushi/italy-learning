@@ -11,7 +11,10 @@
         if (k === 'class') el.className = v;
         else if (k === 'html') el.innerHTML = v;
         else if (k === 'text') el.textContent = v;
-        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'style' && typeof v === 'object') {
+          // 自定义属性（--x）必须用 setProperty，直接赋值不生效
+          Object.keys(v).forEach(p => { if (p.slice(0, 2) === '--') el.style.setProperty(p, v[p]); else el.style[p] = v[p]; });
+        }
         else if (k === 'dataset') Object.assign(el.dataset, v);
         else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
         else el.setAttribute(k, v === true ? '' : v);

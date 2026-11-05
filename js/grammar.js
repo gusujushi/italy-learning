@@ -728,5 +728,5 @@
       .filter(x => x.hits.length);
   }
 
-  return { tokenize, colorize, chunks, trunk, verbsOf, difficulty, tags, scan, forms, wordsOf, markVocab, POINTS, byId: BY_ID, ART, PREP_SIMPLE, PREP_ART, STRONG_CONJ, CLITIC_ZH };
+  return { tokenize, colorize, chunks, trunk, verbsOf, difficulty, tags, scan, forms, wordsOf, markVocab, POINTS, byId: BY_ID, Morph, ART, PREP_SIMPLE, PREP_ART, STRONG_CONJ, CLITIC_ZH };
 });

@@ -19,11 +19,12 @@
     if (hasTTS()) { try { root.speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
   }
 
-  function playFile(file, rate) {
+  function playFile(file, rate, onProgress) {
     return new Promise(resolve => {
       const a = new Audio(AUDIO_DIR + file);
       a.preload = 'auto';
       a.playbackRate = rate;
+      if (onProgress) a.ontimeupdate = () => { if (a.duration > 0) onProgress(Math.min(1, a.currentTime / a.duration)); };
       if ('preservesPitch' in a) a.preservesPitch = true;
       else if ('webkitPreservesPitch' in a) a.webkitPreservesPitch = true;
       curAudio = a;
@@ -68,7 +69,7 @@
     });
   }
 
-  /** 朗读一段意大利语。返回 true=正常播完。可被 stop() 打断。 */
+  /** 朗读一段意大利语。返回 true=正常播完。可被 stop() 打断。opts: rate；onProgress(0..1)（只有自带音频能给出进度）。 */
   async function play(text, opts) {
     opts = opts || {};
     stop();
@@ -77,9 +78,10 @@
     const file = map()[key];
     const rate = opts.rate || Store.setting('speed') || 1;
     let ok = false;
-    if (file && Store.setting('useRecorded')) ok = await playFile(file, rate);
+    if (file && Store.setting('useRecorded')) ok = await playFile(file, rate, opts.onProgress);
     if (my !== token) return false;
     if (!ok) ok = await speakTTS(text, rate);
+    if (ok && opts.onProgress && my === token) opts.onProgress(1);
     return my === token && ok;
   }
 

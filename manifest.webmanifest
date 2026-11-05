@@ -1,0 +1,18 @@
+{
+  "name": "意大利语能力岛",
+  "short_name": "意语能力岛",
+  "description": "从零开始的 90 天意大利语：每课 6 步学习法、彩色句子分析、可调学习计划、生词本间隔复习。",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8f0",
+  "theme_color": "#d9434b",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

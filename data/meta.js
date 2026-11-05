@@ -1,0 +1,32 @@
+/* 课程元数据：3 个阶段 / 9 座岛 */
+Course.setMeta({
+  total: 90,
+  phases: [
+    { id: 1, days: [1, 30], zh: '生存期', it: 'Sopravvivenza', level: 'A1 入门',
+      goal: '掌握全部发音；能在咖啡吧、餐厅、车站、酒店等场景完成基本对话。' },
+    { id: 2, days: [31, 60], zh: '成长期', it: 'Crescita', level: 'A1 完整 → A2 入门',
+      goal: '建立语法骨架；能谈日常、社交，叙述简单的过去与计划。' },
+    { id: 3, days: [61, 90], zh: '进阶期', it: 'Avanzamento', level: 'A2（含少量 B1 入门）',
+      goal: '学会叙事、表达观点；读通知与短文，写 100–150 词，完成实战模拟。' },
+  ],
+  islands: [
+    { id: 1, days: [1, 10], hue: 14, emoji: '🔊', it: 'Isola dei Suoni', zh: '发音岛',
+      blurb: '打通 5 个元音、软硬 c/g、双辅音与重音，学会问候、自我介绍和点咖啡。' },
+    { id: 2, days: [11, 20], hue: 38, emoji: '🍝', it: 'Isola della Vita', zh: '生活岛',
+      blurb: '餐厅、购物、时间、家人、爱好、城市——日常生活的第一批句子。' },
+    { id: 3, days: [21, 30], hue: 190, emoji: '🧳', it: 'Isola del Viaggio', zh: '旅行岛',
+      blurb: '问路、车站机场、酒店、付款、求助、观光——一个人也能走遍意大利。' },
+    { id: 4, days: [31, 40], hue: 95, emoji: '☀️', it: 'Isola della Giornata', zh: '日常岛',
+      blurb: '一天的作息、常用不规则动词、缩合介词、租房、买菜、工作与电话。' },
+    { id: 5, days: [41, 50], hue: 330, emoji: '🥂', it: 'Isola degli Amici', zh: '社交岛',
+      blurb: '宾语代词、喜欢、买衣服、看医生、邀请、周末、节日与做客。' },
+    { id: 6, days: [51, 60], hue: 215, emoji: '⏳', it: 'Isola del Tempo', zh: '时间岛',
+      blurb: '过去时、将来时、命令式、比较级，会写短信和明信片。' },
+    { id: 7, days: [61, 70], hue: 265, emoji: '📖', it: 'Isola dei Ricordi', zh: '记忆岛',
+      blurb: '未完成过去时与叙事、关系代词、读新闻、写正式邮件、讲故事。' },
+    { id: 8, days: [71, 80], hue: 160, emoji: '💬', it: 'Isola delle Opinioni', zh: '观点岛',
+      blurb: '礼貌请求、表达观点、非人称句、组合代词、条件句、求职与办事。' },
+    { id: 9, days: [81, 90], hue: 45, emoji: '🎓', it: 'Isola del Diploma', zh: '毕业岛',
+      blurb: '租房、聚餐、投诉、突发状况、读《木偶奇遇记》、写作与听说工坊、毕业考。' },
+  ],
+});

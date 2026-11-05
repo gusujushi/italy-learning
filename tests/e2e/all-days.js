@@ -29,7 +29,7 @@ const [from, to] = (process.env.LESSONS || process.env.DAYS || '1-90').split('-'
 
   let pages = 0, sentences = 0, noVerb = 0, withTags = 0, quizSizes = {};
   for (const n of lessons) {
-    const info = await page.evaluate(k => { const d = Course.day(k); return { vocab: d.vocab.length, lines: Lesson.lines(k).length, exam: d.exam, test: d.test }; }, n);
+    const info = await page.evaluate(k => { const d = Course.day(k); return { vocab: d.vocab.length, lines: Lesson.lines(k).length, exam: d.exam, test: d.test, rq: d.rq.length, speak: d.speak.length, wr: !!d.wr, roles: new Set(d.dlg.map(l => l.who)).size }; }, n);
     for (const s of STEPS) {
       await page.goto(base + '#/lesson/' + n + '/' + s);
       await page.waitForSelector('nav.steps a.on[data-step="' + s + '"]', { timeout: 5000 });
@@ -58,8 +58,14 @@ const [from, to] = (process.env.LESSONS || process.env.DAYS || '1-90').split('-'
         assert.deepEqual(r.noTok, [], '第 ' + n + ' 课这些句子的分析面板没有可点的词：' + r.noTok);
         assert.deepEqual(r.bad, [], '第 ' + n + ' 课这些句子的分析面板有 [object]/undefined：' + r.bad);
         sentences += r.n; noVerb += r.noVerb; withTags += r.tags;
+        assert.equal(await page.locator('.card:has-text("阅读理解") .ex').count(), info.rq ? 1 : 0, '第 ' + n + ' 课阅读理解题');
+      } else if (s === 'grammar') {
+        assert.equal(await page.locator('textarea[aria-label="微写作"]').count(), info.wr ? 1 : 0, '第 ' + n + ' 课微写作');
       } else if (s === 'shadow') {
         assert.ok(await page.locator('.shadow-sent').count() >= 1);
+        assert.equal(await page.locator('.ptask').count(), info.speak, '第 ' + n + ' 课「看中文，开口说」任务数');
+        await page.locator('button:has-text("角色扮演")').click();
+        assert.ok(await page.locator('.rp button:has-text("我演")').count() >= Math.min(2, info.roles), '第 ' + n + ' 课角色扮演选项');
         await page.locator('button:has-text("意群跟读")').click();
         assert.ok(await page.locator('.chunks span').count() >= 1, '第 ' + n + ' 课意群跟读没有意群');
         await page.locator('button:has-text("自动连读")').click();

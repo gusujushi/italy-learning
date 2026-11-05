@@ -139,6 +139,25 @@
         h('td', null, r.forms.map((f, i) => h('span', null, i ? '； ' : '', h('b', { class: 'it', lang: 'it', text: f.text }), ' ', h('span', { class: 'muted small', text: f.desc.replace(/^[^·]*·\s*/, '') })))))))));
   }
 
+  /** 微写作：用本课学的句型写几句话，可对照示范答案和自查清单 */
+  function writingCard(ctx) {
+    const d = ctx.d, n = ctx.n;
+    if (!d.wr) return null;
+    const ta = h('textarea', { class: 'inp', rows: 5, placeholder: '在这里写……（自动保存在本机）', lang: 'it', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', 'aria-label': '微写作' });
+    ta.value = Store.note('d' + n);
+    ta.addEventListener('input', () => Store.note('d' + n, ta.value));
+    const model = h('div', { class: 'model', hidden: true },
+      h('b', { text: '示范答案' }),
+      String(d.wr.it).split('\n').map(t => h('div', { class: 'eg', onclick: () => Sound.play(t) }, playBtn(t), h('div', { class: 'it', lang: 'it', text: t }))),
+      d.wr.zh ? h('div', { class: 'zh', text: d.wr.zh }) : null);
+    const checks = ['大小写与标点', '重音符号 è à ì ò ù', '名词前的冠词（il / la / un / una）', '动词变位与人称是否一致', '拼写与词序'];
+    return cardT('微写作', 'Scrittura · 可选', h('p', { text: d.wr.task }), ExerciseUI.keypad(ta), ta,
+      h('div', { class: 'row gap wrap', style: { marginTop: '8px' } },
+        h('button', { class: 'btn', type: 'button', text: '看示范答案', onclick: e => { model.hidden = false; e.currentTarget.disabled = true; Store.record('write', true); } })),
+      model,
+      h('details', { class: 'chk' }, h('summary', { text: '自查清单' }), h('ul', null, checks.map(c => h('li', null, h('label', null, h('input', { type: 'checkbox' }), ' ' + c))))));
+  }
+
   function stepGrammar(ctx, body) {
     const d = ctx.d, n = ctx.n;
     pronBlock(d, body);
@@ -163,6 +182,8 @@
     if (vt) body.append(cardT('动词一览', 'Verbi', h('p', { class: 'muted small', text: '意大利语动词词尾会告诉你「谁」在做、「什么时候」做。把这张表和精读里的红色谓语对照着看。' }), vt));
 
     if (d.culture) body.append(cardT('文化小贴士', 'Cultura', h('p', { html: UI.md(d.culture) })));
+    const wc = writingCard(ctx);
+    if (wc) body.append(wc);
     if (d.quiz.length) {
       const box = h('div');
       body.append(cardT('知识小测', 'Quiz', box));

@@ -135,20 +135,21 @@
 
     // AI 老师
     const key = h('input', { type: 'password', placeholder: 'sk-…（可选）', autocomplete: 'off', 'aria-label': 'DeepSeek API Key', value: set('apiKey') || '', onchange: e => { set('apiKey', e.target.value.trim()); UI.toast(e.target.value.trim() ? '已保存密钥（只存在本机）' : '已清除密钥', 1600); } });
-    const model = h('select', { class: 'sel', onchange: e => set('model', e.target.value) },
-      [['deepseek-chat', 'deepseek-chat（推荐，快）'], ['deepseek-reasoner', 'deepseek-reasoner（推理，较慢）']].map(([v, t]) => h('option', { value: v, text: t })));
-    model.value = set('model') || 'deepseek-chat';
+    const model = h('input', { type: 'text', list: 'model-list', placeholder: '留空 = 自动选择（推荐）', autocomplete: 'off', 'aria-label': '模型名', value: set('model') || '',
+      onchange: e => { set('model', e.target.value.trim()); } });
+    const modelList = h('datalist', { id: 'model-list' }, ['deepseek-v4-flash', 'deepseek-v4-pro'].map(v => h('option', { value: v })));
     const testOut = h('div', { class: 'small', 'aria-live': 'polite' });
     stack.append(h('section', { class: 'card stack' },
       h('h3', null, '🤖 AI 老师', h('small', { text: '  可选' })),
       h('p', { class: 'muted small', style: { margin: 0 }, text: '填入你自己的 DeepSeek API Key 后，「逐句精读」里每一句都可以让 AI 老师讲解、提问。密钥只保存在你自己的浏览器里，请求由浏览器直接发到 api.deepseek.com；导出进度时不会带上密钥；不填也不影响任何其他功能。AI 讲解可能出错，重要的语法点请对照课文和词典。' }),
       h('label', { class: 'lbl', text: 'API Key' }), key,
-      h('label', { class: 'setrow', style: { padding: 0 } }, h('span', { class: 'lbl', text: '模型' }), model),
+      h('label', { class: 'lbl', text: '模型（留空 = 自动选择账户里可用的 flash 模型；DeepSeek 的模型名更新较快，必要时到官网查看最新名字）' }), model, modelList,
       h('div', { class: 'row gap wrap' },
         h('button', { class: 'btn sm', type: 'button', text: '测试连接', onclick: async e => {
-          e.currentTarget.disabled = true; testOut.textContent = '连接中…';
-          try { testOut.textContent = '✓ 连接成功：' + await AI.test(); } catch (err) { testOut.textContent = '✗ ' + err.message; }
-          e.currentTarget.disabled = false;
+          const btn = e.currentTarget;            // await 之后 e.currentTarget 会变成 null，要先存下来
+          btn.disabled = true; testOut.textContent = '连接中…（只查询模型列表，不消耗额度）';
+          try { const r = await AI.test(); testOut.textContent = '✓ 连接成功。将使用：' + r.using + '；账户可用模型：' + r.models.join('、'); } catch (err) { testOut.textContent = '✗ ' + err.message; }
+          btn.disabled = false;
         } }),
         h('button', { class: 'btn sm ghost', type: 'button', text: '清除已缓存的讲解（' + Store.aiCount() + ' 条）', onclick: () => { Store.aiClear(); UI.toast('已清除'); } })),
       testOut));

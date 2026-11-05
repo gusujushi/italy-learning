@@ -1,11 +1,13 @@
 /* ⑤ 影子跟读：听一句、马上跟着说一句。三种方式：
  *   🎤 逐句录音：听原音 → 录自己 → 对比 → 自评
  *   🧩 意群跟读：整句按意群切开，逐块高亮、逐块跟读，再连起来读
- *   ▶ 自动连读：程序放一句、留出和这句一样长的空档让你跟读，自动往下走 */
+ *   ▶ 自动连读：程序放一句、留出和这句一样长的空档让你跟读，自动往下走
+ *   🎭 角色扮演：程序读对方的台词，轮到你时看中文提示开口说
+ * 另有"看中文，开口说"：每课 3–5 个场景任务，先自己说，再看参考。 */
 (function (root) {
   'use strict';
   const h = UI.h, clear = UI.clear;
-  const MODES = [['rec', '🎤 逐句录音'], ['chunk', '🧩 意群跟读'], ['auto', '▶ 自动连读']];
+  const MODES = [['rec', '🎤 逐句录音'], ['chunk', '🧩 意群跟读'], ['auto', '▶ 自动连读'], ['role', '🎭 角色扮演']];
 
   function ratingBar(onRate) {
     let rated = null;
@@ -17,6 +19,20 @@
       } }));
     });
     return box;
+  }
+
+  /** 看中文，开口说：每课的场景任务。先自己说，再看参考，最后自评 */
+  function speakCard(ctx, act) {
+    const tasks = ctx.d.speak;
+    if (!tasks.length) return null;
+    return h('section', { class: 'card' }, h('h3', null, '看中文，开口说', h('small', { text: '  Parla tu' })),
+      h('p', { class: 'muted small', text: '看中文提示，先自己说出来（出声说，别只在心里想），再点按钮看参考答案并自评。' }),
+      tasks.map((t, i) => {
+        const ans = h('div', { class: 'rp-ans', hidden: true }, h('div', { class: 'it', lang: 'it', text: t.it }), W.playBtn(t.it, 'btn round sm'));
+        return h('div', { class: 'ptask' }, h('div', { class: 'cue', text: (i + 1) + '. ' + t.zh }),
+          h('button', { class: 'btn sm', type: 'button', text: '先自己说，再看参考', onclick: e => { ans.hidden = false; Sound.play(t.it); act(); e.currentTarget.remove(); } }), ans,
+          ratingBar((v, first) => { if (first) { Store.record('speak', v >= 1); act(); } }));
+      }));
   }
 
   function render(ctx, body) {
@@ -45,11 +61,11 @@
       clear(modeBar);
       MODES.forEach(([m, t]) => modeBar.append(h('button', { type: 'button', role: 'tab', class: S.mode === m ? 'on' : '', 'aria-selected': String(S.mode === m), text: t, onclick: () => setMode(m) })));
     }
-    function drawNav() { navLabel.textContent = '第 ' + (S.idx + 1) + ' / ' + lines.length + ' 句'; }
-    function setMode(m) { S.sess++; Sound.stop(); S.mode = m; drawModes(); drawStage(); }
+    function drawNav() { navLabel.textContent = '第 ' + (S.idx + 1) + ' / ' + lines.length + ' 句'; nav.hidden = S.mode === 'role'; }
+    function setMode(m) { S.sess++; Sound.stop(); S.mode = m; drawModes(); drawNav(); drawStage(); }
     function setIdx(i) { S.sess++; Sound.stop(); S.idx = Math.max(0, Math.min(lines.length - 1, i)); drawNav(); drawStage(); }
 
-    const nav = h('div', { class: 'row between', style: { margin: '4px 0' } },
+    const nav = h('div', { class: 'row between', style: { margin: '4px 0' }, id: 'shadow-nav' },
       h('button', { class: 'btn sm', type: 'button', 'aria-label': '上一句', text: '‹ 上一句', onclick: () => setIdx(S.idx - 1) }),
       navLabel,
       h('button', { class: 'btn sm', type: 'button', 'aria-label': '下一句', text: '下一句 ›', onclick: () => setIdx(S.idx + 1) }));
@@ -184,15 +200,63 @@
           h('button', { class: 'tg' + (S.loop ? ' on' : ''), type: 'button', text: '循环', 'aria-pressed': String(S.loop), onclick: e => { S.loop = !S.loop; e.currentTarget.classList.toggle('on', S.loop); e.currentTarget.setAttribute('aria-pressed', String(S.loop)); } })));
     }
 
+    // ---------- 🎭 角色扮演 ----------
+    function drawRole() {
+      const dlg = ctx.d.dlg;
+      const roles = [];
+      dlg.forEach(l => { if (l.who && roles.indexOf(l.who) < 0) roles.push(l.who); });
+      const box = h('div', { class: 'rp' });
+      const bubble = (l, mine) => h('div', { class: 'rp-b ' + (mine ? 'me' : 'other') }, h('span', { class: 'who', text: l.who }), h('div', { class: 'it', lang: 'it', text: l.it }), h('div', { class: 'zh', text: l.zh }));
+      function intro() {
+        S.sess++; Sound.stop(); clear(box);
+        box.append(h('p', { class: 'muted', text: '选一个角色。程序读对方的台词，轮到你时看中文提示开口说——先别看参考答案，说完再核对。' }),
+          h('div', { class: 'row gap wrap' }, roles.slice(0, 3).map(r => h('button', { class: 'btn primary', type: 'button', onclick: () => begin(r), text: '我演 ' + r }))));
+      }
+      function begin(role) {
+        const my = ++S.sess; clear(box);
+        const log = h('div', { class: 'rp-log' }), prompt = h('div', { class: 'rp-prompt' });
+        box.append(h('div', { class: 'row between' }, h('b', { text: '你扮演：' + role }), h('button', { class: 'btn ghost sm', type: 'button', onclick: intro, text: '换角色 / 重来' })), log, prompt);
+        let i = 0;
+        async function next() {
+          if (my !== S.sess) return;
+          clear(prompt);
+          if (i >= dlg.length) return end();
+          const l = dlg[i];
+          if (l.who !== role) {
+            log.append(bubble(l, false)); log.lastChild.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            await Sound.play(l.it, { rate: S.rate });
+            if (my !== S.sess) return;
+            i++; await UI.sleep(250); return next();
+          }
+          let peeked = false;
+          const ans = h('div', { class: 'rp-ans', hidden: true }, h('div', { class: 'it', lang: 'it', text: l.it }));
+          prompt.append(h('div', { class: 'rp-turn' }, h('b', { text: '轮到你了：' }), h('span', { text: l.zh })), ans,
+            h('div', { class: 'row gap wrap' },
+              h('button', { class: 'btn sm', type: 'button', text: '显示参考', onclick: () => { peeked = true; ans.hidden = false; Sound.play(l.it, { rate: S.rate }); } }),
+              h('button', { class: 'btn primary sm', type: 'button', text: '我说完了 →', onclick: () => { log.append(bubble(l, true)); Store.record('speak', !peeked); act(); i++; next(); } })));
+          prompt.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        function end() {
+          prompt.append(h('p', { class: 'big', text: '🎉 对话完成！' }), h('p', { class: 'muted', text: '想挑战自己：换另一个角色，或者再来一遍，并且不点「显示参考」。' }),
+            h('button', { class: 'btn', type: 'button', onclick: intro, text: '再来一次' }));
+          act(2);
+        }
+        next();
+      }
+      intro();
+      stage.append(box);
+    }
+
     function drawStage() {
       clear(stage);
-      if (S.mode === 'rec') drawRec(); else if (S.mode === 'chunk') drawChunk(); else drawAuto();
+      if (S.mode === 'rec') drawRec(); else if (S.mode === 'chunk') drawChunk(); else if (S.mode === 'role') drawRole(); else drawAuto();
     }
 
     drawModes(); drawNav(); drawStage();
     body.append(
       h('section', { class: 'card' }, modeBar, nav, stage,
         S.mode === 'auto' ? null : h('div', { class: 'row gap center', style: { marginTop: '14px' } }, h('span', { class: 'lbl', text: '语速' }), speedSeg(), h('span', { class: 'muted small', text: '点句子可隐藏 / 显示文本，试着不看文字跟读' }))),
+      ...[speakCard(ctx, act)].filter(Boolean),
       h('section', { class: 'card' },
         h('h3', null, '影子跟读怎么练', h('small', { text: '  Shadowing' })),
         h('ul', { class: 'tips' },

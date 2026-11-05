@@ -167,6 +167,10 @@ async function runSet(page, correctFn) {
   await page.locator('.dchip').first().click();
   assert.ok(await page.locator('details.gtag').count() >= 1, '语法点（从课文句子里扫描）');
   assert.ok(await page.locator('.tbl').count() >= 1, '表格');
+  await page.locator('textarea[aria-label="微写作"]').fill('Buongiorno!');
+  assert.equal(await page.evaluate(() => Store.note('d1')), 'Buongiorno!', '微写作草稿自动保存');
+  await page.locator('button:has-text("看示范答案")').click();
+  assert.ok(await page.locator('.model').isVisible(), '示范答案');
   await shot('05-grammar');
   await runSet(page, () => true);
   await page.locator('.summary .btn.primary').click();
@@ -189,12 +193,24 @@ async function runSet(page, correctFn) {
   await page.locator('button:has-text("从这句开始")').click();
   await page.waitForSelector('.status:has-text("听：第")');
   await page.locator('button:has-text("停止")').click();
+  const nSpeak = await page.evaluate(n => Course.day(n).speak.length, L);
+  assert.equal(await page.locator('.ptask').count(), nSpeak, '「看中文，开口说」任务数 = 课程数据');
+  await page.locator('.ptask button:has-text("先自己说")').first().click();
+  assert.ok(await page.locator('.ptask .rp-ans:not([hidden])').count() === 1, '点按钮后显示参考答案');
+  await page.locator('button:has-text("角色扮演")').click();
+  await page.locator('.rp button:has-text("我演")').first().click();
+  // 对方的台词是真的在播放音频（每句 1–2 秒），所以按时间等，而不是按次数
+  for (const t0 = Date.now(); Date.now() - t0 < 40000 && !(await page.locator('.rp .big', { hasText: '对话完成' }).count());) {
+    const btn = page.locator('.rp-prompt .btn.primary');
+    if (await btn.count()) await btn.click(); else await page.waitForTimeout(300);
+  }
+  assert.ok(await page.locator('.rp .big', { hasText: '对话完成' }).count(), '角色扮演走完');
   await shot('06-shadow');
   assert.ok(await fin.isEnabled(), '互动后可完成');
   await fin.click();
   await page.waitForURL(new RegExp('#/lesson/' + L + '/quiz'));
   assert.ok(await stepTab('shadow').locator('.ok').count(), '影子跟读打勾');
-  step('⑤ 影子跟读：自评 / 意群 / 自动连读');
+  step('⑤ 影子跟读：自评 / 意群 / 自动连读 / 角色扮演 / 看中文开口说');
 
   // 8. ⑥ 闯关测验（全部答对 → 3 星，6 步全部完成）
   await page.locator('button:has-text("开始测验")').click();
@@ -210,6 +226,18 @@ async function runSet(page, correctFn) {
   assert.equal(st.best, 100);
   assert.ok(st.cards >= 12, '词句已加入生词本：' + st.cards);
   step('⑥ 闯关测验：满分，6 步完成，生词入库 ' + st.cards + ' 张');
+
+  // 8b. 带短文的课：精读页末尾有阅读理解题；做完后这一步打勾并进入下一步
+  const tl = await page.evaluate(() => { for (let n = 1; n <= 90; n++) if (Course.day(n).rq.length) return n; return 0; });
+  assert.ok(tl > 1, '课程里应有带阅读理解的课');
+  await go('#/lesson/' + tl + '/read');
+  await page.waitForSelector('.card:has-text("阅读理解") .ex');
+  assert.ok(await page.locator('.sent').count() > await page.evaluate(n => Course.day(n).dlg.length, tl), '精读句子里包含短文');
+  await runSet(page, () => true);
+  await page.locator('.summary .btn.primary').click();
+  await page.waitForURL(new RegExp('#/lesson/' + tl + '/grammar'));
+  assert.equal(await page.evaluate(n => Store.stepDone(n, 'read'), tl), true);
+  step('带短文的课：精读 + 阅读理解题');
 
   // 9. 今日学习 / 地图 / 全部课程 反映进度
   await go('#/');
@@ -339,26 +367,46 @@ async function runSet(page, correctFn) {
   step('学习方法 / 发音室 / 我的 / 深色主题');
 
   // 14. AI 老师（用假接口，不联网）
-  let aiReq = null;
+  let aiReq = null, modelsCalls = 0;
+  const ids = ['deepseek-v4-pro', 'deepseek-v4-flash'];
   await page.route('https://api.deepseek.com/**', async route => {
-    aiReq = { auth: route.request().headers().authorization, body: JSON.parse(route.request().postData() || '{}') };
-    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ choices: [{ message: { content: '• **主语**：省略（动词 sta 告诉你是 Lei）\n• 这是测试回复' } }] }) });
+    const req = route.request();
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' };
+    if (new URL(req.url()).pathname === '/models') {
+      modelsCalls++;
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ data: ids.map(id => ({ id })) }) });
+    }
+    aiReq = { auth: req.headers().authorization, body: JSON.parse(req.postData() || '{}') };
+    if (ids.indexOf(aiReq.body.model) < 0) return route.fulfill({ status: 400, contentType: 'application/json', headers: cors, body: JSON.stringify({ error: { message: 'Model Not Exist' } }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: '• **主语**：省略（动词 sta 告诉你是 Lei）\n• 这是测试回复' } }] }) });
   });
   await go('#/lesson/' + L + '/read');
   await page.locator('.sent').nth(1).click();
   assert.match(await page.locator('.ai-box').textContent(), /填入 DeepSeek API Key/, '没有 Key 时提示去设置');
   await page.evaluate(() => Store.setting('apiKey', 'sk-test-123'));
+  await go('#/settings');
+  await page.locator('button:has-text("测试连接")').click();
+  await page.waitForSelector('text=连接成功');
+  assert.match(await page.locator('[aria-live="polite"]:has-text("连接成功")').textContent(), /deepseek-v4-flash.*deepseek-v4-pro|deepseek-v4-pro.*deepseek-v4-flash/);
+  assert.equal(aiReq, null, '测试连接只查询模型列表，不发聊天请求');
   await go('#/lesson/' + L + '/read');
   await page.locator('.sent').nth(1).click();
   await page.locator('.ai-box button', { hasText: '讲解这一句' }).click();
   await page.waitForSelector('.ai-box:has-text("这是测试回复")');
   assert.equal(aiReq.auth, 'Bearer sk-test-123');
   assert.ok(/Buongiorno! Come sta\?/.test(aiReq.body.messages[1].content), '请求里带着课文句子');
-  assert.equal(aiReq.body.model, 'deepseek-chat');
+  assert.equal(aiReq.body.model, 'deepseek-v4-flash', '模型留空时自动选账户里带 flash 的模型');
+  assert.ok(modelsCalls >= 2);
   assert.equal(JSON.parse(await page.evaluate(() => Store.exportJSON())).settings.apiKey, '', '导出的进度不含 Key');
   assert.equal(await page.evaluate(() => Store.aiCount()), 1, '讲解结果被缓存');
-  await page.evaluate(() => Store.setting('apiKey', ''));
-  step('AI 老师：无 Key 提示 / 带 Key 请求 / 缓存 / 导出不含 Key');
+  // 手动填了一个账户里没有的模型名：报错并列出可用模型
+  await page.evaluate(() => Store.setting('model', 'deepseek-chat'));
+  await page.locator('.ai-box input[aria-label="向 AI 老师提问"]').fill('为什么用 sta？');
+  await page.locator('.ai-box button', { hasText: '提问' }).click();
+  await page.waitForSelector('.ai-box:has-text("账户里没有模型")');
+  assert.match(await page.locator('.ai-box .why').textContent(), /deepseek-chat.*可用的模型有：deepseek-v4-pro、deepseek-v4-flash/);
+  await page.evaluate(() => { Store.setting('apiKey', ''); Store.setting('model', ''); });
+  step('AI 老师：无 Key 提示 / 测试连接 / 自动选模型 / 缓存 / 模型名错误提示 / 导出不含 Key');
 
   // 15. 音频：清单要覆盖全部课程文本，并且真的能用 <audio> 播放 mp3（而不是悄悄退回浏览器语音）
   await go('#/');

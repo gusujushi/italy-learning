@@ -2,7 +2,7 @@
 
 ## 课程内容
 
-**课文、对话、词汇释义、语法与文化讲解、练习题、写作示范**全部为本项目原创。参考的 GitHub 项目只借鉴了产品设计思路，**没有复制它们的内容或代码**（详见 [docs/REFERENCES.md](docs/REFERENCES.md)）。
+**课文、对话、词汇释义、语法与文化讲解、练习题、写作示范**全部为本项目原创。参考的 GitHub 项目（包括流程所对齐的 [gusujushi/nce-english-island](https://github.com/gusujushi/nce-english-island)）只借鉴了产品设计思路，**没有复制它们的内容或代码**（详见 [docs/REFERENCES.md](docs/REFERENCES.md) 和 [docs/REFERENCE_ALIGNMENT.md](docs/REFERENCE_ALIGNMENT.md)）。计划引擎、意大利语动词形态库、彩色句子分析、界面等全部为本项目独立编写。
 
 > 仓库所有者尚未为本项目选择许可证。在添加 `LICENSE` 文件之前，默认保留所有权利。
 
@@ -31,4 +31,4 @@
 
 ## 字体与图标
 
-页面使用系统字体和 Emoji，未引入第三方字体或图标库。
+页面使用系统字体和 Emoji，未引入第三方字体或图标库。PWA 图标（`icons/`）由 `tools/make_icons.py` 用纯几何图形绘制（意大利国旗三色竖条 + “IT” 字样），不含任何第三方素材。

@@ -225,6 +225,9 @@
   /** 听 · 理解题（手写） */
   function listenQs(n) { return Course.day(n).q.map(q => fromQuiz(q, 'listen')); }
 
+  /** 阅读理解题（手写，只有带短文的课才有） */
+  function readQs(n) { return Course.day(n).rq.map(q => fromQuiz(q, 'read')); }
+
   /** 读 · 配对 + 阅读理解题 */
   function readSet(n, rnd) {
     const d = Course.day(n); rnd = rnd || rnd0;
@@ -243,7 +246,7 @@
   }
 
   return {
-    dayTest, rangeTest, listTest, wordSet, listenQs, readSet, learnQuiz, writeSet,
+    dayTest, rangeTest, listTest, wordSet, listenQs, readQs, readSet, learnQuiz, writeSet,
     _x: { listenChoose, vocabChoose, dictation, order, translate, cloze, blankIndex, buckets, compose, fromQuiz, mkOptions },
   };
 });

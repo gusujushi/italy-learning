@@ -117,11 +117,10 @@
       const btn = h('button', { class: 'btn sm', type: 'button', text: c0 ? '重新讲解' : '讲解这一句', onclick: async () => {
         btn.disabled = true; btn.textContent = '思考中…';
         try {
-          if (c0 || btn.dataset.again) Store.aiSet('x:' + n + ':' + l.i + ':' + (Store.setting('model') || ''), '');
-          const r = await AI.explain(l, { n, title: d.zh });
+          const r = await AI.explain(l, { n, title: d.zh }, !!btn.dataset.asked || !!c0);
           show(r.text);
         } catch (e) { clear(out).append(h('div', { class: 'why', style: { color: 'var(--bad)' }, text: '出错了：' + e.message })); }
-        btn.disabled = false; btn.textContent = '重新讲解'; btn.dataset.again = '1';
+        btn.disabled = false; btn.textContent = '重新讲解'; btn.dataset.asked = '1';
       } });
       const q = h('input', { type: 'text', placeholder: '问点别的，比如：为什么这里用 il？', 'aria-label': '向 AI 老师提问', onkeydown: e => { if (e.key === 'Enter') askBtn.click(); } });
       const askBtn = h('button', { class: 'btn sm', type: 'button', text: '提问', onclick: async () => {
@@ -227,6 +226,14 @@
     wrap.append(ctrl, h('div', { style: { height: '14px' } }), list);
     body.append(h('div', { class: 'note' }, '点任意一句：听发音，右边（手机上是底部面板）显示它的彩色分析。点句中的词看释义和变位说明；本课词汇用黄底标出。'),
       h('div', { class: 'reader-grid' }, wrap, panel));
+
+    // 带短文的课：读完之后做阅读理解题
+    if (d.rq.length) {
+      const rbox = h('div');
+      body.append(h('section', { class: 'card' }, h('h3', null, '阅读理解', h('small', { text: '  Comprensione del testo' })),
+        h('p', { class: 'muted small', text: '读完上面的短文，回答几个问题。' }), rbox));
+      ExerciseUI.run(rbox, ExGen.readQs(n), { title: '阅读', onDone: s => { if (s.total) ctx.done(); }, doneLabel: '下一步：语法透视 →', onContinue: () => ctx.next() });
+    }
 
     panel.append(h('p', { class: 'muted', text: '← 点左边任意一句，这里会显示它的颜色分析、意群切分、动词变位和语法点。' }));
     const start = ctx.q && ctx.q.get && parseInt(ctx.q.get('s'), 10);

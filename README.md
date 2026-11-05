@@ -89,7 +89,7 @@ python3 tools/refine_pairs.py --model /path/to/it_IT-paola-medium.onnx  # 发音
 ## 开发与质检
 
 ```bash
-npm test                          # 单元测试 87 项：计划引擎、形态库、彩色分析、Store、PWA 外壳、数据解析、练习生成、音频完整性……
+npm test                          # 单元测试 88 项：计划引擎、形态库、彩色分析、Store、PWA 外壳、数据解析、练习生成、音频完整性……
 node tools/validate.js            # 课程数据结构校验（天数、格式、答案序号、表格列数…）
 node tests/e2e/flow.js            # 端到端：走完第 1 课的 6 步，再测复习日、生词本、计划日历、AI（假接口）、音频播放、PWA 离线、手机布局
 node tests/e2e/all-days.js        # 90 课 × 6 步 = 540 个页面逐页渲染，精读页逐句点开彩色分析，确认没有 JS 错误

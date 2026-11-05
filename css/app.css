@@ -235,7 +235,7 @@ textarea.inp { min-height: 120px; resize: vertical; }
 /* 我的 / 设置 */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; } .statbox { text-align: center; background: var(--bg2); border-radius: 12px; padding: 8px 2px; } .statbox b { display: block; font-size: 1.15rem; } .statbox span { font-size: .7rem; color: var(--muted); }
 .radar { width: 100%; max-width: 320px; display: block; margin: 0 auto; } .radar .ring { fill: none; stroke: var(--line); } .radar .axis { stroke: var(--line); } .radar .area { fill: color-mix(in srgb, var(--brand) 30%, transparent); stroke: var(--brand); stroke-width: 2; } .radar .lab { fill: var(--ink); font-size: 12px; } .radar .dot { fill: var(--brand); }
-.heat { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; } .heat i { aspect-ratio: 1; border-radius: 4px; background: color-mix(in srgb, var(--brand) calc(var(--a) * 100%), var(--bg2)); display: block; }
+.heat { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; max-width: 760px; } .heat i { aspect-ratio: 1; border-radius: 4px; background: color-mix(in srgb, var(--brand) calc(var(--a) * 100%), var(--bg2)); display: block; }
 .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 10px; } .badge { text-align: center; opacity: .45; filter: grayscale(1); } .badge.got { opacity: 1; filter: none; } .badge .bi { font-size: 2rem; display: block; } .badge small { font-size: .72rem; color: var(--muted); }
 .setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); } .setrow:last-child { border: 0; } .setrow small { display: block; color: var(--muted); font-size: .76rem; } .setrow input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--brand); flex: none; }
 .sel { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 7px 10px; max-width: 55%; width: auto; }
@@ -259,7 +259,7 @@ textarea.inp { min-height: 120px; resize: vertical; }
 .shadow-sent.blur .it { filter: blur(9px); cursor: pointer; } .shadow-sent { cursor: pointer; }
 .btn.rec-on { background: var(--bad); color: #fff; border-color: var(--bad); animation: pulse 1s infinite; }
 .wlist { margin-top: 10px; } .wrow { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); } .wrow:last-child { border: 0; }
-.score-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; } .score-grid .sc { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; font-size: 11px; text-decoration: none; color: var(--ink); background: color-mix(in srgb, var(--ok) calc(var(--a) * 70%), var(--bg2)); } .score-grid .sc.done { outline: 2px solid var(--ok); }
+.score-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; max-width: 760px; } @media (max-width: 860px) { .score-grid { grid-template-columns: repeat(10, 1fr); } } .score-grid .sc { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; font-size: 11px; text-decoration: none; color: var(--ink); background: color-mix(in srgb, var(--ok) calc(var(--a) * 70%), var(--bg2)); } .score-grid .sc.done { outline: 2px solid var(--ok); }
 .setrow .sel, .setrow select { width: auto; }
 .step-body > .banner { margin: 0; }
 details.gtag > summary { cursor: pointer; }

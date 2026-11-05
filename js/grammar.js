@@ -235,7 +235,7 @@
       const inf = an.filter(a => a.t === 'inf');
       const ger = an.filter(a => a.t === 'ger');
       // 前面是冠词 / 物主词 / 介词，就当名词（il lavoro, la porta, per cena）；cena 在 "la cena è…" 里也是名词
-      const nounish = !core && p >= 0 && nounHomograph(an) && nounishPrev(p, w) &&
+      const nounish = !core && p >= 0 && nounHomograph(an) && (nounishPrev(p, w) || (w === 'saluti' && /^(cordiali|distinti|cari|tanti|affettuosi|migliori)$/.test(pw))) &&   // Cordiali saluti, = 书信结尾，名词
         !(CLITIC.has(pw) && aoc(p) === 'clitic');
 
       if (pw === 'che' && prevWordIdx(toks, p) < 0 && !core && /!\s*$/.test(sentence) && !laterFinite(i)) continue;   // Che lavoro faticoso!：感叹句里的名词
@@ -435,6 +435,16 @@
     return parts;
   }
 
+  const TONIC = S("me te lui lei noi voi loro");
+  /** 这个问句是不是特殊疑问句：疑问词在句首的前 3 个词里（E dove…? A che ora…? Di dove sei?），
+   *  或者紧跟在句首的逗号之后（Scusa, che ore sono?）。"come + 重读代词"是比较（Hai fame, come me?），不算 */
+  function isWhQuestion(pt) {
+    const items = [];
+    let afterComma = false;
+    pt.toks.forEach(k => { if (k.w) { items.push({ w: k.w, afterComma }); afterComma = false; } else if (k.t === ',') afterComma = true; });
+    return items.some((it, i) => WH.has(it.w) && (i <= 2 || (it.afterComma && i <= 6)) && !(it.w === 'come' && items[i + 1] && TONIC.has(items[i + 1].w)));
+  }
+
   function ctxOf(sentence, toks) {
     const words = toks.filter(k => k.w).map(k => k.w);
     const verbToks = toks.filter(k => k.cls === 'verb' && k.an && k.an[0]);
@@ -470,7 +480,7 @@
       desc: '用疑问词开头问具体信息：che / cosa（什么）、chi（谁）、dove（哪里）、quando（什么时候）、come（怎样）、perché（为什么）、quanto（多少）、quale（哪一个）。',
       how: '疑问词放句首，后面直接接动词；perché 既问“为什么”，也答“因为”。',
       ex: 'Dove vai? Quando torni? Quanto costa? —— 你去哪里？你什么时候回来？多少钱？',
-      test: c => c.parts.some(pt => pt.end === '?' && pt.first && WH.has(pt.first.w)) },
+      test: c => c.parts.some(pt => pt.end === '?' && pt.first && isWhQuestion(pt)) },
     { id: 'avere', name: 'avere：有 / 年龄 / 感觉', color: '#2b8a3e', from: 3,
       desc: 'avere 表示“有”，还用来说年龄和身体感觉：ho fame（饿）、ho sete（渴）、ho venti anni（20 岁）。',
       how: 'ho / hai / ha / abbiamo / avete / hanno；h 不发音。说年龄用 avere，不用 essere。',
@@ -485,7 +495,7 @@
       desc: '是非问句不需要倒装，也不需要助动词：把陈述句的句号换成问号，句尾语调上扬 ↗ 即可。',
       how: 'Parli italiano?（你说意大利语吗？）回答 Sì, parlo un po’. / No, non parlo italiano.',
       ex: 'Hai fame? Sì, ho fame! —— 你饿吗？是的，我饿了！',
-      test: c => c.parts.some(pt => pt.end === '?' && pt.first && !WH.has(pt.first.w)) },
+      test: c => c.parts.some(pt => pt.end === '?' && pt.first && !isWhQuestion(pt) && pt.toks.some(k => k.cls === 'verb')) },   // 没有动词的省略问句（E tu? Per cartoline?）不算
     { id: 'essere', name: 'essere 句型（是 / 在）', color: '#e8590c', from: 7,
       desc: '主语 + essere + 名词、形容词或地点，说明“是什么、怎么样、在哪里”。',
       how: 'sono / sei / è / siamo / siete / sono；形容词要和主语的性、数一致（阳性 -o，阴性 -a）。',

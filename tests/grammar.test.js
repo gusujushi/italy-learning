@@ -22,7 +22,7 @@ test('分词：省音的撇号并入前一个词', () => {
   assert.equal(Grammar.tokenize("Dov'è").map(k => k.t).join(''), "Dov'è", '分词不丢字符');
 });
 
-test('着色：基本句型（谓语红、介词蓝、连接词紫、代词青）', () => {
+test('着色：基本句型（谓语红、介词蓝、连接词紫、代词橙）', () => {
   const cases = [
     ['Buongiorno! Come sta?', 'Buongiorno! Come{c} sta{v}?'],
     ['Prendo gli spaghetti.', 'Prendo{v} gli spaghetti.'],
@@ -62,6 +62,7 @@ test('着色：lo / la / li / le / gli / l’ —— 冠词还是代词', () => 
 });
 
 test('着色：名词和动词同形的词（lavoro, porta, conto, cena…）看上下文', () => {
+  assert.equal(fmt('Cordiali saluti,'), 'Cordiali saluti,', '书信结尾 saluti 是名词，不是动词');
   assert.equal(fmt('Il mio lavoro è bello, ma la porta del mio ufficio è sempre chiusa.'), 'Il mio lavoro è{v} bello, ma{c} la porta del{p} mio ufficio è{v} sempre chiusa{v}.');
   assert.equal(fmt('Vado al lavoro in autobus.'), 'Vado{v} al{p} lavoro in{p} autobus.');
   assert.equal(fmt('Lavoro in banca.'), 'Lavoro{v} in{p} banca.');
@@ -186,4 +187,12 @@ test('全部课文：分析不抛异常、速度够快、着色比例合理', ()
   assert.ok(withVerb / sents > 0.7, '至少 70% 的句子能找到谓语，实际 ' + Math.round(100 * withVerb / sents) + '%');
   const ratio = colored / tokens;
   assert.ok(ratio > 0.3 && ratio < 0.65, '着色词占比应在 30%–65% 之间，实际 ' + Math.round(100 * ratio) + '%');
+});
+
+test('语法点：特殊疑问句 vs 一般疑问句（疑问词不一定在第一个词；省略问句不算一般疑问句）', () => {
+  const wh = ['Dove vai?', 'Scusa, che ore sono?', 'A che ora chiude il museo?', 'E dove si mangia meglio?', 'Di dove sei?', 'Con chi parli?', 'Allora, dove andiamo?', "Com'è andato il weekend?"];
+  wh.forEach(s => { const t = tagIds(s); assert.ok(t.includes('q_wh') && !t.includes('q_yn'), s + ' → ' + t); });
+  const yn = ['Parli italiano?', 'Hai fame?', 'Ha già preso un appuntamento?', 'Hai fame, come me?', 'E tu, sai suonare?'];
+  yn.forEach(s => { const t = tagIds(s); assert.ok(t.includes('q_yn') && !t.includes('q_wh'), s + ' → ' + t); });
+  ['E tu?', 'E Lei?', 'Per cartoline?'].forEach(s => { const t = tagIds(s); assert.ok(!t.includes('q_yn') && !t.includes('q_wh'), s + ' → ' + t); });
 });

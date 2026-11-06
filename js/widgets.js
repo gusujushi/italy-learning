@@ -84,5 +84,27 @@
   const TYPE_ZH = { learn: '学习日', review: '复习日', free: '自由日' };
   const TYPE_ICON = { learn: '📘', review: '🔁', free: '☕' };
 
-  root.W = { fmtDate, phaseOf, islandOf, hexOf, card, cardT, goalList, playBtn, table, egList, dots, lessonState, lessonRow, lessonCard, TYPE_ZH, TYPE_ICON };
+  // ---------- 添加到手机主屏幕 ----------
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isWeb = () => /^https?:$/.test(location.protocol);
+
+  /** 把本程序"安装"到手机桌面的步骤（iPhone / 安卓各一份，当前设备那一份放在最前面） */
+  function installGuide() {
+    const ios = h('div', { class: 'note' }, h('b', { text: '🍎 iPhone / iPad' }),
+      h('ol', { class: 'tips', style: { margin: '6px 0 0' } },
+        h('li', { text: '必须用 Safari 打开本页（Chrome、微信内置浏览器都不能添加）。' }),
+        h('li', { text: '点底部的「分享」按钮 ⬆️。' }),
+        h('li', { text: '向下滑，选「添加到主屏幕」，点「添加」。' }),
+        h('li', { text: '之后从桌面图标打开：全屏、没有地址栏。' })));
+    const android = h('div', { class: 'note' }, h('b', { text: '🤖 安卓' }),
+      h('ol', { class: 'tips', style: { margin: '6px 0 0' } },
+        h('li', { text: '用 Chrome（或 Edge）打开本页。' }),
+        h('li', { text: '点页面里的「安装」按钮；没有的话，点右上角菜单 ⋮ →「安装应用」或「添加到主屏幕」。' }),
+        h('li', { text: '之后从桌面图标打开。' })));
+    return h('div', { class: 'stack' }, isIOS() ? [ios, android] : [android, ios],
+      h('p', { class: 'muted small', style: { margin: 0 }, text: '提示：iPhone 上，主屏幕里的应用和 Safari 的学习进度是分开保存的——建议先添加到主屏幕，再开始学；已经在 Safari 里学了一部分的话，用「设置与计划 → 导出 / 导入进度」搬过去。' }));
+  }
+
+  root.W = { isIOS, isStandalone, isWeb, installGuide, fmtDate, phaseOf, islandOf, hexOf, card, cardT, goalList, playBtn, table, egList, dots, lessonState, lessonRow, lessonCard, TYPE_ZH, TYPE_ICON };
 })(window);

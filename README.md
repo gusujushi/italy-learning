@@ -67,6 +67,38 @@ python3 -m http.server 8080        # 然后打开 http://localhost:8080
 
 **部署到 GitHub Pages**：仓库 Settings → Pages → Source 选 *Deploy from a branch*，分支选 `main`（或当前分支），文件夹选 `/ (root)`，无需构建（仓库里有 `.nojekyll`）。部署后用手机浏览器打开网址，iPhone 用 Safari「添加到主屏幕」，安卓用 Chrome「安装应用」。
 
+## 手机上使用（像 App 一样）
+
+程序是纯静态的网页（PWA）：把它发布成一个 **https 网址**，手机打开后「添加到主屏幕」，就有桌面图标、全屏打开，断网也能学（做法和新概念英语能力岛相同）。
+
+**第一步：发布成网址（只需做一次）——用 GitHub Pages**
+
+1. 打开仓库 **Settings → Pages**。
+2. **Source** 选 *Deploy from a branch*；**Branch** 选包含这些文件的分支（现在是 `claude/italian-isola-course`；合并到 `main` 之后选 `main`），文件夹选 **`/ (root)`**，点 Save。（仓库里已有 `.nojekyll`，不需要构建。）
+3. 等 1–2 分钟，页面顶部会出现网址：`https://gusujushi.github.io/italy-learning/`
+
+> **私有仓库的限制**：GitHub Pages 对私有仓库需要付费的 GitHub Pro / Team 套餐；免费账号要把仓库改成 Public（Settings → General 最下面 Danger Zone → Change visibility）。公开后任何人都能看到课程内容和音频，而且**仓库还没有选许可证**，默认保留所有权利——是否公开请自己决定。另外，用私有仓库发布出来的 Pages 网址同样是公开可访问的。
+>
+> **不想公开 / 不想付费**：把同一个仓库连到 Cloudflare Pages、Netlify 或 Vercel（它们的免费套餐支持私有仓库）：构建命令留空，输出目录填 `/`（根目录），得到一个 https 网址，后面的步骤完全一样。
+>
+> 在中国大陆访问 `github.io` 有时不稳定；打不开时换个网络，或改用上面的 Cloudflare Pages / Netlify。
+
+**第二步：在手机上添加到主屏幕**
+
+- **iPhone**：必须用 **Safari** 打开网址 → 点底部「分享」按钮 ⬆️ → 选「添加到主屏幕」→ 添加。
+- **安卓**：用 **Chrome** 打开网址 → 点页面里的「安装」按钮，或菜单 ⋮ →「安装应用 / 添加到主屏幕」。
+- 程序在手机浏览器里会自动在「今日学习」顶部提示添加步骤；也可以在「设置与计划 → 安装到手机 / 离线使用」里查看。
+
+**第三步：离线用的音频（可选）**
+
+「设置与计划 → 安装到手机 / 离线使用 → 下载全部音频到本机」（约 33 MB，建议连 Wi-Fi）。不下载也能用——音频会在第一次播放时从网上取。
+
+注意：
+
+- **录音**需要 https（GitHub Pages 是 https），第一次点 🎤 时浏览器会请求麦克风权限。
+- **iPhone 上，主屏幕里的应用和 Safari 的学习进度是分开保存的**：先添加到主屏幕再开始学；已经在 Safari 里学过的，用「设置与计划 → 导出 / 导入进度」搬过去。
+- 想先在电脑上看：`python3 -m http.server 8080` 后打开 `http://localhost:8080`；同一个 Wi-Fi 下，手机也能用 `http://电脑的局域网地址:8080` 访问，但这是 http，**不能安装、不能录音**。
+
 ## 声音从哪来
 
 1. **优先播放 `audio/` 里的预生成 MP3**（Piper `it_IT-paola-medium`，训练数据 CC0；48 kbps 单声道，响度已统一，峰值留有余量不削波）。
@@ -93,6 +125,7 @@ npm test                          # 单元测试 88 项：计划引擎、形态�
 node tools/validate.js            # 课程数据结构校验（天数、格式、答案序号、表格列数…）
 node tests/e2e/flow.js            # 端到端：走完第 1 课的 6 步，再测复习日、生词本、计划日历、AI（假接口）、音频播放、PWA 离线、手机布局
 node tests/e2e/all-days.js        # 90 课 × 6 步 = 540 个页面逐页渲染，精读页逐句点开彩色分析，确认没有 JS 错误
+node tests/e2e/pwa-subpath.js     # 模拟 GitHub Pages 子路径：Service Worker、下载全部音频、断网后页面与音频仍可用
 node tests/e2e/screenshots.js     # 重新生成 docs/screenshots/
 # 意大利语拼写检查（Hunspell 词典 + 词频表，见 tools/qa_italian.py 开头）
 python3 tools/qa_italian.py --dict /path/to/it_IT/it_IT --freq /path/to/it_50k.txt

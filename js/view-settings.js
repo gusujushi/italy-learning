@@ -68,17 +68,23 @@
   // ---------- 离线缓存 ----------
 
   function offlineCard() {
-    const box = h('section', { class: 'card stack' }, h('h3', { text: '安装与离线' }));
-    const swOk = 'serviceWorker' in navigator && /^https?:$/.test(location.protocol);
-    box.append(h('p', { class: 'muted small', style: { margin: 0 }, text: swOk
-      ? '本程序是 PWA：可以「安装」到桌面 / 主屏幕，课程和已播放过的音频会缓存，断网也能学。'
-      : '当前是通过本地文件（file://）打开的——直接可用；如果要安装或离线缓存，请通过 https 地址（比如 GitHub Pages）或 localhost 访问。' }));
-    const row = h('div', { class: 'row gap wrap' });
-    if (App.canInstall()) row.append(h('button', { class: 'btn primary', type: 'button', text: '安装到桌面 / 主屏幕', onclick: async () => { await App.install(); UI.toast('已提示安装'); } }));
+    const box = h('section', { class: 'card stack', id: 'install-card' }, h('h3', { text: '安装到手机 / 离线使用' }));
+    const swOk = 'serviceWorker' in navigator && W.isWeb();
+    if (!W.isWeb()) {
+      box.append(h('p', { class: 'muted small', style: { margin: 0 }, text: '当前是通过本地文件（file://）打开的——课程可以直接用。要安装成 App、在手机上用、录音，需要通过 https 网址（比如 GitHub Pages）打开，见 README 里的「手机上使用」。' }));
+    } else if (W.isStandalone()) {
+      box.append(h('p', { style: { margin: 0 }, text: '✓ 你现在是以「已安装的应用」方式打开的。' }));
+    } else {
+      box.append(h('p', { class: 'muted small', style: { margin: 0 }, text: '安装后：桌面有图标、全屏打开，课程和已缓存的音频断网也能学。' }));
+      const row = h('div', { class: 'row gap wrap' });
+      if (App.canInstall()) row.append(h('button', { class: 'btn primary', type: 'button', text: '安装到桌面 / 主屏幕', onclick: async () => { await App.install(); UI.toast('已提示安装'); } }));
+      row.append(h('button', { class: 'btn', type: 'button', text: '查看添加步骤（iPhone / 安卓）', onclick: () => UI.sheet('添加到手机主屏幕', W.installGuide()) }));
+      box.append(row);
+    }
     if (swOk && root.caches) {
       const files = Array.from(new Set(Object.values(root.AUDIO_MAP || {})));
       const st = h('span', { class: 'muted small' });
-      const btn = h('button', { class: 'btn', type: 'button', text: '下载全部音频到本机（约 ' + Math.round(files.length * 0.0098) + ' MB）', onclick: async () => {
+      const btn = h('button', { class: 'btn', type: 'button', text: '下载全部音频到本机（约 ' + Math.round(files.length * 0.0098) + ' MB，建议连 Wi-Fi）', onclick: async () => {
         btn.disabled = true;
         try {
           const cache = await caches.open(AUDIO_CACHE);
@@ -96,9 +102,9 @@
         } catch (e) { st.textContent = '缓存失败：' + e.message; }
         btn.disabled = false;
       } });
-      row.append(btn, st);
+      box.append(h('div', { class: 'row gap wrap' }, btn, st),
+        h('p', { class: 'muted small', style: { margin: 0 }, text: '不下载也能用：音频会在第一次播放时从网上取。下载后，课程里所有句子都能断网播放。' }));
     }
-    box.append(row);
     return box;
   }
 

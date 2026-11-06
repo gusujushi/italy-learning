@@ -466,6 +466,17 @@ async function runSet(page, correctFn) {
   assert.ok(await m.locator('#bottombar').isVisible(), '手机显示底栏');
   assert.ok(!(await m.locator('#side').isVisible()), '手机隐藏侧栏');
   assert.equal(await m.locator('#bottombar a').count(), 5);
+  assert.ok(await m.locator('.install-card').isVisible(), '手机浏览器里显示"添加到桌面"提示');
+  await m.locator('.install-card button:has-text("怎么添加")').tap();
+  await m.waitForSelector('.sheet:has-text("添加到主屏幕")');
+  const guide = await m.locator('.sheet').textContent();
+  assert.match(guide, /Safari/); assert.match(guide, /分享/); assert.match(guide, /添加到主屏幕/);   // iPhone 步骤
+  assert.match(guide, /Chrome/); assert.match(guide, /安装应用/);                                    // 安卓步骤（当前设备的那份排在最前面）
+  assert.ok(guide.indexOf('安卓') < guide.indexOf('iPhone'), '非 iOS 设备把安卓步骤排在前面');
+  await m.keyboard.press('Escape');
+  await m.locator('.install-card button[aria-label="不再提示"]').tap();
+  assert.equal(await m.evaluate(() => Store.setting('installHidden')), true);
+  assert.equal(await m.locator('.install-card').count(), 0, '点 ✕ 后不再提示');
   await m.locator('#bottombar a[data-nav="more"]').tap();
   await m.waitForSelector('.island-card');
   assert.equal(await m.locator('.island-card').count(), 4, '更多：发音室 / 我的进度 / 学习方法 / 设置与计划');
@@ -483,7 +494,7 @@ async function runSet(page, correctFn) {
   const noHScroll = await m.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   assert.ok(noHScroll, '手机上没有横向滚动');
   assert.deepEqual(merrors, [], '手机页面不应有 JS 错误:\n' + merrors.join('\n'));
-  step('手机：底栏 / 更多 / 返回栏 / 精读底部面板 / 无横向滚动');
+  step('手机：添加到桌面提示 / 底栏 / 更多 / 返回栏 / 精读底部面板 / 无横向滚动');
 
   console.log('E2E 通过');
   await browser.close(); srv.close();

@@ -20,6 +20,18 @@
     return href ? h('a', { class: 'card stat', href, style: { textDecoration: 'none', color: 'inherit' } }, inner) : h('div', { class: 'card stat' }, inner);
   }
 
+  /** 手机浏览器里、还没安装成应用时，今日学习顶部的"添加到桌面"提示（可以点 ✕ 不再提示） */
+  function installHint() {
+    if (Store.setting('installHidden') || !W.isWeb() || W.isStandalone()) return null;
+    if (!(window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 860)) return null;
+    const box = h('div', { class: 'card install-card' },
+      h('div', { class: 'row between' }, h('b', { text: '📲 添加到手机桌面，像 App 一样打开' }),
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': '不再提示', text: '✕', onclick: () => { Store.setting('installHidden', true); box.remove(); } })),
+      h('p', { class: 'muted small', style: { margin: '4px 0 8px' }, text: '全屏、有桌面图标，课程和音频还能离线用。' }),
+      h('button', { class: 'btn sm primary', type: 'button', text: '怎么添加', onclick: async () => { if (!(await App.install())) UI.sheet('添加到手机主屏幕', W.installGuide()); } }));
+    return box;
+  }
+
   // ---------- 今日学习 ----------
 
   root.Views.today = function (el) {
@@ -71,6 +83,8 @@
       cta);
 
     const stack = h('div', { class: 'stack' }, hero);
+    const ih = installHint();
+    if (ih) stack.append(ih);
 
     stack.append(h('div', { class: 'grid g4' },
       stat('🔥', Store.streakNow(), '连续学习天数'),

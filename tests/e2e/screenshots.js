@@ -19,6 +19,7 @@ const OUT = path.join(ROOT, 'docs/screenshots');
     await page.goto(base + '#/');
     await page.evaluate(() => {
       const t = SRS.dateStr();
+      Store.setting('installHidden', true);   // 截图里不要出现"添加到桌面"提示卡
       Store.setPlan({ start: SRS.addDays(t, -15), days: 90, phases: [1, 2, 3] });
       const ctx = App.planCtx();
       const scores = [100, 92, 85, 78, 96, 88, 70, 100];

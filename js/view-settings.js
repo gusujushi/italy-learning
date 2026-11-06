@@ -144,12 +144,22 @@
     const model = h('input', { type: 'text', list: 'model-list', placeholder: '留空 = 自动选择（推荐）', autocomplete: 'off', 'aria-label': '模型名', value: set('model') || '',
       onchange: e => { set('model', e.target.value.trim()); } });
     const modelList = h('datalist', { id: 'model-list' }, ['deepseek-v4-flash', 'deepseek-v4-pro'].map(v => h('option', { value: v })));
+    const base = h('input', { type: 'text', inputmode: 'url', placeholder: AI.DEFAULT_BASE + '（默认，DeepSeek 官方）', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': '接口地址', value: set('aiBase') || '',
+      onchange: e => {
+        const v = e.target.value.trim().replace(/\/+$/, '');
+        if (v && !AI.validBase(v)) { UI.toast('接口地址必须以 https:// 开头', 3000); e.target.value = set('aiBase') || ''; return; }
+        set('aiBase', v); e.target.value = v; UI.toast(v ? '已改用自定义接口地址' : '已恢复为 DeepSeek 官方地址', 1800);
+      } });
     const testOut = h('div', { class: 'small', 'aria-live': 'polite' });
     stack.append(h('section', { class: 'card stack' },
       h('h3', null, '🤖 AI 老师', h('small', { text: '  可选' })),
       h('p', { class: 'muted small', style: { margin: 0 }, text: '填入你自己的 DeepSeek API Key 后，「逐句精读」里每一句都可以让 AI 老师讲解、提问。密钥只保存在你自己的浏览器里，请求由浏览器直接发到 api.deepseek.com；导出进度时不会带上密钥；不填也不影响任何其他功能。AI 讲解可能出错，重要的语法点请对照课文和词典。' }),
       h('label', { class: 'lbl', text: 'API Key' }), key,
       h('label', { class: 'lbl', text: '模型（留空 = 自动选择账户里可用的 flash 模型；DeepSeek 的模型名更新较快，必要时到官网查看最新名字）' }), model, modelList,
+      h('details', { class: 'chk', open: !!set('aiBase') },
+        h('summary', { text: '高级：接口地址（用其他平台的 Key 才需要改）' }),
+        h('p', { class: 'muted small', style: { margin: '6px 0' }, text: 'Key 是在 DeepSeek 官方平台（platform.deepseek.com，形如 sk-…）创建的，保持默认即可。如果是别的平台（火山方舟、硅基流动等）的 Key，把该平台文档里的 Base URL 填在这里（只接受 https），模型名也按该平台文档填写。平台要允许网页直接调用（跨域）才能用。' }),
+        base),
       h('div', { class: 'row gap wrap' },
         h('button', { class: 'btn sm', type: 'button', text: '测试连接', onclick: async e => {
           const btn = e.currentTarget;            // await 之后 e.currentTarget 会变成 null，要先存下来

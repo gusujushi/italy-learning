@@ -3,18 +3,25 @@
  * 导出进度文件时不会带上密钥。没有填密钥时，课程的所有功能照常使用。
  *
  * 模型名：DeepSeek 的模型名更换得比较快（旧的 deepseek-chat / deepseek-reasoner 已被新名字取代），所以这里不写死——
- * 设置里"模型"留空时，第一次使用会向 /models 查询账户可用的模型，优先选名字里带 flash 的（快、便宜）；也可以自己填写。 */
+ * 设置里"模型"留空时，第一次使用会向 /models 查询账户可用的模型，优先选名字里带 flash 的（快、便宜）；也可以自己填写。
+ * 接口地址：默认是 DeepSeek 官方；也可以在设置里改成其他"兼容 OpenAI 格式"的平台（只允许 https，防止密钥明文传输）。 */
 (function (root) {
   'use strict';
 
-  const BASE = 'https://api.deepseek.com';
+  const DEFAULT_BASE = 'https://api.deepseek.com';
   const FALLBACK_MODEL = 'deepseek-v4-flash';
   const SYSTEM = '你是一位耐心、严谨的意大利语老师，学生是母语为中文的零基础学习者。' +
     '请用简体中文讲解，意大利语只在需要举例时出现并附中文翻译。不要使用 Markdown 标题和表格；用短段落，需要列点时用「• 」开头；' +
     '重点词用 **双星号** 包起来。不确定的地方直接说明不确定，不要编造语法规则。';
 
-  let autoModel = '';
+  let autoModel = '', autoModelBase = '';
   const ready = () => !!String(Store.setting('apiKey') || '').trim();
+
+  /** 接口地址是否可用：必须是 https（本机调试地址除外），否则密钥会明文传输 */
+  const validBase = u => /^https:\/\/[^\s/]+(\/\S*)?$/i.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/\S*)?$/i.test(u);
+  /** 当前接口地址（去掉末尾斜杠）；没填就是 DeepSeek 官方 */
+  const base = () => String(Store.setting('aiBase') || '').trim().replace(/\/+$/, '') || DEFAULT_BASE;
+  const isDefaultBase = () => base() === DEFAULT_BASE;
 
   function describe(status, data) {
     const m = (data && data.error && data.error.message) || '';
@@ -28,11 +35,12 @@
   async function call(path, init, timeout) {
     const key = String(Store.setting('apiKey') || '').trim();
     if (!key) throw new Error('还没有填写 API Key（在「设置与计划」里填写）');
+    if (!validBase(base())) throw new Error('接口地址必须以 https:// 开头（在「设置与计划」里修改）');
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), timeout || 60000);
     let res;
     try {
-      res = await fetch(BASE + path, Object.assign({ signal: ctrl.signal }, init, { headers: Object.assign({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, (init && init.headers) || {}) }));
+      res = await fetch(base() + path, Object.assign({ signal: ctrl.signal }, init, { headers: Object.assign({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, (init && init.headers) || {}) }));
     } catch (e) {
       throw new Error(e && e.name === 'AbortError' ? '请求超时，请检查网络后重试' : '连不上 DeepSeek，请检查网络（如果在国内，可能需要网络代理）');
     } finally { clearTimeout(to); }
@@ -48,22 +56,24 @@
   }
   const pick = ids => ids.find(i => /flash/i.test(i)) || ids.find(i => /^deepseek-/i.test(i)) || ids[0] || '';
 
-  /** 这次要用的模型：设置里填了就用它，没填就自动选一个 */
+  /** 这次要用的模型：设置里填了就用它，没填就自动选一个（换了接口地址就重新选） */
   async function model() {
     const m = String(Store.setting('model') || '').trim();
     if (m) return m;
-    if (autoModel) return autoModel;
-    try { autoModel = pick(await models()); } catch (e) { /* 查询失败就用保底名字，真正的错误留给聊天请求报告 */ }
+    if (autoModel && autoModelBase === base()) return autoModel;
+    autoModel = ''; autoModelBase = base();
+    try { autoModel = pick(await models()); } catch (e) { /* 查询失败：DeepSeek 官方用保底名字，真正的错误留给聊天请求报告 */ }
+    if (!autoModel && !isDefaultBase()) throw new Error('这个平台没有返回模型列表，请在「设置与计划」里手动填写模型名（按平台文档）');
     return autoModel || FALLBACK_MODEL;
   }
 
   async function chat(messages, opts) {
     opts = opts || {};
-    const body = m => JSON.stringify({
+    const body = m => JSON.stringify(Object.assign({
       model: m, messages: [{ role: 'system', content: SYSTEM }].concat(messages), temperature: 0.3, stream: false,
       // 有些模型的"思考过程"也计入 max_tokens，所以多留余量，并把思考强度调低（讲解句子用不着长篇推理）
-      max_tokens: opts.maxTokens || 3000, reasoning_effort: 'low',
-    });
+      max_tokens: opts.maxTokens || 3000,
+    }, isDefaultBase() ? { reasoning_effort: 'low' } : {}));   // reasoning_effort 是 DeepSeek 的参数，其他平台可能不认，就不发
     let m = await model(), d;
     try {
       d = await call('/chat/completions', { method: 'POST', body: body(m) }, opts.timeout || 90000);
@@ -107,13 +117,20 @@
     return chat([{ role: 'user', content: prompt }]);
   }
 
-  /** 设置页的"测试连接"：只查询模型列表，不消耗额度。返回 {models, using} */
+  /** 设置页的"测试连接"：只查询模型列表，不消耗额度。返回 {models, using}。
+   *  有些平台没有 /models，这时（只在自定义接口地址下）改发一条很短的聊天请求来验证 */
   async function test() {
-    const ids = await models();
     const want = String(Store.setting('model') || '').trim();
+    let ids;
+    try { ids = await models(); } catch (e) {
+      if (isDefaultBase() || (e.status !== 404 && e.status !== 405)) throw e;
+      if (!want) throw new Error('这个平台没有模型列表接口，请先在上面填写模型名，再测试连接');
+      await call('/chat/completions', { method: 'POST', body: JSON.stringify({ model: want, messages: [{ role: 'user', content: '请只回复：成功' }], max_tokens: 16, stream: false }) }, 30000);
+      return { models: [], using: want };
+    }
     if (ids.length && want && ids.indexOf(want) < 0) throw new Error('Key 有效，但账户里没有模型「' + want + '」。可用的模型有：' + ids.join('、'));
     return { models: ids, using: want || pick(ids) };
   }
 
-  root.AI = { ready, cached, explain, ask, test, models };
+  root.AI = { ready, cached, explain, ask, test, models, validBase, DEFAULT_BASE };
 })(window);

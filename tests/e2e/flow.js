@@ -405,8 +405,38 @@ async function runSet(page, correctFn) {
   await page.locator('.ai-box button', { hasText: '提问' }).click();
   await page.waitForSelector('.ai-box:has-text("账户里没有模型")');
   assert.match(await page.locator('.ai-box .why').textContent(), /deepseek-chat.*可用的模型有：deepseek-v4-pro、deepseek-v4-flash/);
-  await page.evaluate(() => { Store.setting('apiKey', ''); Store.setting('model', ''); });
-  step('AI 老师：无 Key 提示 / 测试连接 / 自动选模型 / 缓存 / 模型名错误提示 / 导出不含 Key');
+  // 自定义接口地址（高级）：只接受 https；请求发到该地址；不发 DeepSeek 专用的 reasoning_effort
+  let altReq = null;
+  await page.route('https://llm.example.test/**', async route => {
+    const req = route.request();
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' };
+    const p = new URL(req.url()).pathname;
+    if (p === '/v1/models') return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ data: [{ id: 'my-model' }] }) });
+    altReq = { path: p, auth: req.headers().authorization, body: JSON.parse(req.postData() || '{}') };
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: '自定义平台回复' } }] }) });
+  });
+  await page.evaluate(() => { Store.setting('model', ''); });
+  await go('#/settings');
+  const baseInput = page.locator('input[aria-label="接口地址"]');
+  assert.ok(!(await baseInput.isVisible()), '「高级」默认折叠，普通用户看不到接口地址');
+  await page.locator('summary:has-text("高级：接口地址")').click();
+  await baseInput.fill('http://evil.example.com/v1');
+  await baseInput.press('Tab');
+  assert.equal(await page.evaluate(() => Store.setting('aiBase')), '', 'http 地址被拒绝（密钥不能明文传输）');
+  await baseInput.fill('https://llm.example.test/v1/');
+  await baseInput.press('Tab');
+  assert.equal(await page.evaluate(() => Store.setting('aiBase')), 'https://llm.example.test/v1', '末尾斜杠被去掉');
+  await page.evaluate(() => { Store.setting('apiKey', 'alt-key-0000'); });
+  await go('#/lesson/' + L + '/read');
+  await page.locator('.sent').nth(2).click();
+  await page.locator('.ai-box button', { hasText: '讲解这一句' }).click();
+  await page.waitForSelector('.ai-box:has-text("自定义平台回复")');
+  assert.equal(altReq.path, '/v1/chat/completions');
+  assert.equal(altReq.auth, 'Bearer alt-key-0000');
+  assert.equal(altReq.body.model, 'my-model', '自定义平台：从它的 /models 里取模型');
+  assert.ok(!('reasoning_effort' in altReq.body), '自定义平台不发 DeepSeek 专用参数');
+  await page.evaluate(() => { Store.setting('apiKey', ''); Store.setting('model', ''); Store.setting('aiBase', ''); });
+  step('AI 老师：无 Key 提示 / 测试连接 / 自动选模型 / 缓存 / 模型名错误提示 / 自定义接口地址 / 导出不含 Key');
 
   // 15. 音频：清单要覆盖全部课程文本，并且真的能用 <audio> 播放 mp3（而不是悄悄退回浏览器语音）
   await go('#/');

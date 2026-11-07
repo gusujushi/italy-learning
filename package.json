@@ -11,7 +11,8 @@
     "screenshots": "node tests/e2e/screenshots.js",
     "icons": "python3 tools/make_icons.py",
     "serve": "python3 -m http.server 8080",
-    "e2e:pwa": "node tests/e2e/pwa-subpath.js"
+    "e2e:pwa": "node tests/e2e/pwa-subpath.js",
+    "e2e:pron": "node tests/e2e/pron.js"
   },
   "engines": {
     "node": ">=18"

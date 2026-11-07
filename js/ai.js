@@ -70,7 +70,7 @@
   async function chat(messages, opts) {
     opts = opts || {};
     const body = m => JSON.stringify(Object.assign({
-      model: m, messages: [{ role: 'system', content: SYSTEM }].concat(messages), temperature: 0.3, stream: false,
+      model: m, messages: [{ role: 'system', content: opts.system || SYSTEM }].concat(messages), temperature: 0.3, stream: false,
       // 有些模型的"思考过程"也计入 max_tokens，所以多留余量，并把思考强度调低（讲解句子用不着长篇推理）
       max_tokens: opts.maxTokens || 3000,
     }, isDefaultBase() ? { reasoning_effort: 'low' } : {}));   // reasoning_effort 是 DeepSeek 的参数，其他平台可能不认，就不发
@@ -117,6 +117,31 @@
     return chat([{ role: 'user', content: prompt }]);
   }
 
+  const COACH = '你是一位耐心、严谨的意大利语发音教练，学生是母语为中文的初学者。' +
+    '你拿到的是程序自动分析的结果（语音识别可能出错，这不是人耳听感），只能依据这些数据下判断。' +
+    '逐词判断本身有误差：母语者把句子读对，也约有 4% 的词会被标成「有点出入」，所以只有一两个轻微标记时请用「可能」「建议再听一遍确认」这样的措辞，不要下定论。' +
+    '请用简体中文，语气温和但具体；不要使用 Markdown 标题和表格；需要列点时用「• 」开头；重点词用 **双星号** 包起来。' +
+    '数据不足以判断的地方要直说，不要编造数据里没有的问题。';
+
+  /** 发音点评。p 是 PronEval.aiPayload() 的结果（只有文字和数字，不含音频）。
+   *  这里 DeepSeek 做的是"根据识别文字和对比数据写评语、给改正意见"——它本身不能听音频。 */
+  async function pronFeedback(p, ctx) {
+    const ST = { ok: '读对了', slip: '有点出入', wrong: '可能读错', missing: '可能漏读', unclear: '不够清晰', unreliable: '无法判断（词太短，或标准音频也没被识别准）' };
+    const lines = p.words.map(w => '• ' + w.word + '：' + (ST[w.status] || w.status) + (w.heard && w.status !== 'ok' && w.status !== 'unreliable' ? '，识别成「' + w.heard + '」' : '')).join('\n');
+    const pr = p.prosody;
+    const dir = d => (d === 'rise' ? '上扬' : d === 'fall' ? '下降' : d === 'flat' ? '平' : '无法判断');
+    const pros = pr
+      ? '语速比 ' + pr.speedRatio + '（大于 1 表示学生更慢）；音节数差 ' + pr.syllableDiff + '（只是估计，±1 以内属正常误差；≤ -2 才可能是漏读）；停顿数差 ' + pr.pauseDiff + '；句尾走向：学生 ' + dir(pr.finalUser) + ' / 标准 ' + dir(pr.finalRef) + '；节奏相似度 ' + pr.rhythmSimilarity + '（0–1）'
+      : '（没有可用的节奏与语调数据）';
+    const prompt = '课文：第 ' + ctx.n + ' 课「' + ctx.title + '」\n目标句：' + p.target + (p.zh ? '（中文：' + p.zh + '）' : '') + '\n' +
+      '标准音频的识别结果：' + (p.heardRef || '（无）') + '\n学生录音的识别结果：' + (p.heardUser || '（没有识别出内容）') + '\n' +
+      '逐词判断：\n' + lines + '\n节奏与语调（学生 vs 标准音频）：' + pros + '\n综合分：' + (p.score == null ? '无法判断' : p.score + ' / 100') + '\n\n' +
+      '请写点评，包含：\n① 总体评价（1–2 句，先肯定做得好的地方）；\n② 针对有问题的词：说明中文母语者常见的原因（双辅音、词尾元音、r 颤音、c/g 软硬、gli / gn、重音位置等）和具体的改正方法（口型、舌位、节奏；可以用近似的汉语读音，但要说明只是近似）；\n' +
+      '③ 节奏 / 语调建议（只依据上面的数据）；\n④ 一个马上能做的练习（比如 0.7× 慢速跟读 3 遍，再正常速度重录一次对比）。\n' +
+      '要求：识别结果可能不准，不确定的地方要说明；如果全部读对，就给 1–2 条进阶建议；控制在 300 字以内。';
+    return chat([{ role: 'user', content: prompt }], { system: COACH, maxTokens: 3000 });
+  }
+
   /** 设置页的"测试连接"：只查询模型列表，不消耗额度。返回 {models, using}。
    *  有些平台没有 /models，这时（只在自定义接口地址下）改发一条很短的聊天请求来验证 */
   async function test() {
@@ -132,5 +157,5 @@
     return { models: ids, using: want || pick(ids) };
   }
 
-  root.AI = { ready, cached, explain, ask, test, models, validBase, DEFAULT_BASE };
+  root.AI = { ready, cached, explain, ask, pronFeedback, test, models, validBase, DEFAULT_BASE };
 })(window);

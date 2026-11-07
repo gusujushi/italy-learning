@@ -65,6 +65,52 @@
     return box;
   }
 
+  // ---------- 发音评价（语音识别） ----------
+
+  function asrCard() {
+    const box = h('section', { class: 'card stack', id: 'asr-card' }, h('h3', null, '🎙️ 发音评价', h('small', { text: '  语音识别' })));
+    box.append(h('p', { class: 'muted small', style: { margin: 0 }, text: '在「影子跟读」里录音后点「📊 评价发音」：程序用本机的 Whisper 语音识别，把你的录音和标准音频各识别一遍，逐词判断读得像不像，并对比节奏与语调；填了 AI Key 时，再请 DeepSeek 根据识别出的文字和对比数据写点评、给改正意见。' }),
+      h('div', { class: 'note small', text: 'DeepSeek 是文本模型，不能「听」音频，所以听的部分由本机 Whisper 完成——你的录音只在这台设备上处理，不会上传；DeepSeek 只收到识别出的文字和对比数字。' }));
+    const toggles = [
+      toggle('启用本机语音识别', '关闭后评价只做节奏与语调的对比', () => set('asrOn'), v => set('asrOn', v)),
+      toggle('评价后自动请 AI 老师点评', '需要在上面填好 API Key；关闭后可以手动点按钮', () => set('pronAI') !== false, v => set('pronAI', v)),
+    ];
+    function set(k, v) { return Store.setting(k, v); }
+    const status = h('div', { class: 'small', 'aria-live': 'polite', text: '正在检查语音识别模型……' });
+    const bar = h('div', { class: 'bar', hidden: true }, h('i', { style: { width: '0%' } }));
+    const row = h('div', { class: 'row gap wrap' });
+    async function draw() {
+      clear(row);
+      const st = await ASR.status();
+      if (!st.supported) { status.textContent = '⚠ ' + st.reason; return; }
+      if (st.cached) {
+        status.textContent = '✓ 语音识别模型已下载到本机（约 ' + st.sizeMB + ' MB）。断网也能评价——前提是标准音频也在本机（见下面「下载全部音频」）。';
+        row.append(h('button', { class: 'btn danger sm', type: 'button', text: '删除已下载的模型', onclick: async () => { await ASR.clear(); PronUI.RefStore.clear(); UI.toast('已删除'); draw(); } }));
+      } else {
+        status.textContent = '还没有下载语音识别模型（约 ' + st.sizeMB + ' MB，只下载一次）。第一次点「评价发音」时也会提示下载。';
+        const btn = h('button', { class: 'btn primary', type: 'button', text: '下载语音识别模型（约 ' + st.sizeMB + ' MB，建议连 Wi-Fi）', onclick: async () => {
+          btn.disabled = true; bar.hidden = false;
+          try {
+            await ASR.download((p, f) => { bar.firstChild.style.width = Math.round(p * 100) + '%'; status.textContent = '正在下载…' + Math.round(p * 100) + '%'; });
+            UI.toast('下载完成');
+          } catch (e) { status.textContent = '下载失败：' + e.message; btn.disabled = false; bar.hidden = true; return; }
+          bar.hidden = true; draw();
+        } });
+        row.append(btn);
+      }
+    }
+    box.append(toggles, status, bar, row,
+      h('details', { class: 'chk' }, h('summary', { text: '准确度与局限（请看一下）' }),
+        h('ul', { class: 'tips' },
+          h('li', { text: '识别模型是 Whisper-base（int8 量化，体积小、能在手机上跑）。它对意大利语的识别并不完美：在程序自带的合成语音上，它自己就会把一部分词听错——所以评价时会用“标准音频的识别结果”做校准，标准音频本身没被识别准的词不计分。' }),
+          h('li', { text: '测过两种录音：①用合成语音故意读错一个词（60 句）：在能判断的词里，大约一半的读错能被发现（丢掉词尾元音、读错元音较好）；双辅音的长短（pala / palla）、e / o 的开闭口、重音位置，基本分辨不出。这些请用「⇄ 对比原音」自己听，并多找真人反馈。②真人母语者把句子读对（22 段公开录音）：约有 4% 的词会被误标成「有点出入」之类，读对的句子得分 91–100。' }),
+          h('li', { text: '没有用中文母语的学习者录音验证过，所以对你的实际准确度没有数据。分数只作参考，不是考试成绩；它是「识别器听懂了多少」，不是发音标准度。' }),
+          h('li', { text: '识别要在设备上运行一个约 100 MB 的模型：电脑上每句几秒，手机上可能十几秒；第一次加载更久。' }),
+          h('li', { text: '直接双击打开的本地文件（file://）用不了本机识别，需要通过网址（https 或 localhost）打开。' }))));
+    draw();
+    return box;
+  }
+
   // ---------- 离线缓存 ----------
 
   function offlineCard() {
@@ -170,6 +216,7 @@
         h('button', { class: 'btn sm ghost', type: 'button', text: '清除已缓存的讲解（' + Store.aiCount() + ' 条）', onclick: () => { Store.aiClear(); UI.toast('已清除'); } })),
       testOut));
 
+    stack.append(asrCard());
     stack.append(offlineCard());
 
     // 数据

@@ -17,7 +17,7 @@
   function defaults() {
     return {
       v: 2, created: Date.now(),
-      settings: { theme: 'auto', speed: 1, showIt: true, showZh: true, useRecorded: true, autoCards: true, apiKey: '', model: '', aiBase: '', installHidden: false },
+      settings: { theme: 'auto', speed: 1, showIt: true, showZh: true, useRecorded: true, autoCards: true, apiKey: '', model: '', aiBase: '', installHidden: false, asrOn: true, pronAI: true },
       plan: { days: 90, phases: [1, 2, 3], start: todayStr() },
       lessons: {}, reviewDone: {}, srs: {}, skills: {}, notes: {}, fav: {}, log: {}, xp: 0,
       streak: { last: '', count: 0, best: 0 },

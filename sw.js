@@ -1,10 +1,14 @@
 /* Service Worker：让程序可以离线使用。
  * - 程序外壳（页面、脚本、样式、课程数据）：网络优先，断网时用缓存；
- * - 音频（audio/*.mp3，约 31 MB）：不预先缓存。在「设置与计划」里点“下载全部音频”后写入 isola-audio-v1，之后离线可播；
- *   音频请求常带 Range 头，所以只从已缓存的完整文件里切片回答，没缓存就直接走网络。 */
-const VERSION = 'v2';
+ * - 音频（audio/*.mp3，约 32 MB）：不预先缓存。在「设置与计划」里点“下载全部音频”后写入 isola-audio-v1，之后离线可播；
+ *   音频请求常带 Range 头，所以只从已缓存的完整文件里切片回答，没缓存就直接走网络；
+ * - 语音识别的运行库和模型（vendor/、models/，约 100 MB）：缓存优先，单独放在 isola-asr-v1——
+ *   它们很大又几乎不变，不能随外壳版本更新而丢掉重下。下载 / 删除由 js/asr.js 负责。
+ * 改动程序文件后把 VERSION 加 1。 */
+const VERSION = 'v3';
 const SHELL = 'isola-shell-' + VERSION;
 const AUDIO = 'isola-audio-v1';
+const ASR = 'isola-asr-v1';
 
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
@@ -14,7 +18,8 @@ const FILES = [
   'data/island1.js', 'data/island2.js', 'data/island3.js', 'data/island4.js', 'data/island5.js',
   'data/island6.js', 'data/island7.js', 'data/island8.js', 'data/island9.js',
   'audio/manifest.js',
-  'js/ui.js', 'js/store.js', 'js/sound.js', 'js/ai.js', 'js/widgets.js', 'js/exercise-ui.js',
+  'js/prosody.js', 'js/pron-eval.js', 'js/asr-worker.js',
+  'js/ui.js', 'js/store.js', 'js/sound.js', 'js/ai.js', 'js/asr.js', 'js/pron-ui.js', 'js/widgets.js', 'js/exercise-ui.js',
   'js/view-home.js', 'js/lesson-read.js', 'js/lesson-shadow.js', 'js/view-lesson.js', 'js/view-words.js',
   'js/view-review.js', 'js/view-lab.js', 'js/view-me.js', 'js/view-settings.js', 'js/app.js',
 ];
@@ -55,6 +60,18 @@ self.addEventListener('fetch', e => {
       const hit = await cache.match(url.pathname.replace(/^.*\/audio\//, 'audio/'));
       if (hit) return req.headers.get('range') ? rangeFromCache(req, hit) : hit;
       return fetch(req);
+    })());
+    return;
+  }
+
+  if (/\/(vendor|models)\//.test(url.pathname)) {
+    e.respondWith((async () => {
+      const cache = await caches.open(ASR);
+      const hit = await cache.match(req, { ignoreSearch: true });
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res && res.ok && res.status === 200 && res.type === 'basic') cache.put(req, res.clone());
+      return res;
     })());
     return;
   }

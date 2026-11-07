@@ -1,5 +1,5 @@
-/* ⑤ 影子跟读：听一句、马上跟着说一句。三种方式：
- *   🎤 逐句录音：听原音 → 录自己 → 对比 → 自评
+/* ⑤ 影子跟读：听一句、马上跟着说一句。几种方式：
+ *   🎤 逐句录音：听原音 → 录自己 → 对比 → 自评；点「📊 评价发音」：和标准音频对比，给评分、逐词判断、节奏与语调对比、改正意见（见 js/pron-ui.js）
  *   🧩 意群跟读：整句按意群切开，逐块高亮、逐块跟读，再连起来读
  *   ▶ 自动连读：程序放一句、留出和这句一样长的空档让你跟读，自动往下走
  *   🎭 角色扮演：程序读对方的台词，轮到你时看中文提示开口说
@@ -42,7 +42,7 @@
     const S = { idx: 0, mode: 'rec', rate: Store.setting('speed') || 1, hide: false, sess: 0, gap: 1.2, acts: 0, loop: false };
     const start = ctx.q && ctx.q.get && parseInt(ctx.q.get('s'), 10);
     if (start >= 0) { const k = lines.findIndex(l => l.i === start); if (k >= 0) S.idx = k; }
-    const recs = new Map();            // 句子序号 → 录音 blob 地址
+    const recs = new Map();            // 句子序号 → { url, blob }（回放用 url，评价用 blob）
     const rated = new Set();
 
     const finish = h('button', { class: 'btn primary lg', type: 'button', disabled: true, text: '完成影子跟读，去闯关 →', onclick: () => { ctx.done(); location.hash = '#/lesson/' + n + '/quiz'; } });
@@ -92,11 +92,20 @@
       const mic = h('button', { class: 'btn round lg', type: 'button', 'aria-label': '录音', title: '录音', text: '🎤' });
       const back = h('button', { class: 'btn round lg', type: 'button', 'aria-label': '回放我的录音', title: '回放', text: '▷', disabled: !recs.has(idx) });
       const cmp = h('button', { class: 'btn round lg', type: 'button', 'aria-label': '对比原音和我的录音', title: '对比：原音 → 我的', text: '⇄', disabled: !recs.has(idx) });
-      const sr = Sound.canRecognize() ? h('button', { class: 'btn round lg', type: 'button', 'aria-label': '语音识别', title: '语音识别（需联网）', text: '🧠' }) : null;
+      const evalBtn = h('button', { class: 'btn lg primary', type: 'button', 'aria-label': '评价我的发音', title: '对比标准音频，给出评分和改正意见', text: '📊 评价发音', disabled: !recs.has(idx) });
+      const evalHost = h('div', { class: 'eval-host', 'aria-live': 'polite' });
+      let evalRun = null;
       function playMine() {
         if (!recs.has(idx)) return Promise.resolve();
-        return new Promise(res => { Sound.stop(); audio = new Audio(recs.get(idx)); audio.onended = res; audio.onerror = res; audio.play().catch(res); });
+        return new Promise(res => { Sound.stop(); audio = new Audio(recs.get(idx).url); audio.onended = res; audio.onerror = res; audio.play().catch(res); });
       }
+      evalBtn.onclick = () => {
+        const rec = recs.get(idx);
+        if (!rec) return;
+        if (evalRun) evalRun.cancel();
+        evalRun = PronUI.run({ line: l, blob: rec.blob, n: ctx.n, title: ctx.d.zh, host: evalHost, onScore: sc => { if (sc != null) { Store.record('speak', sc >= 70); act(); } } });
+        evalHost.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      };
       mic.onclick = async () => {
         if (!Sound.canRecord()) { tip.textContent = '当前浏览器不支持录音。请直接大声跟读，然后自评。'; return; }
         try {
@@ -106,7 +115,7 @@
           } else {
             const r = await session.stop(); session = null;
             mic.classList.remove('rec-on'); mic.textContent = '🎤';
-            if (r) { recs.set(idx, r.url); back.disabled = false; cmp.disabled = false; tip.textContent = '录好了：点 ⇄ 对比原音，点 ▷ 回放。'; act(); }
+            if (r) { recs.set(idx, { url: r.url, blob: r.blob }); back.disabled = false; cmp.disabled = false; evalBtn.disabled = false; tip.textContent = '录好了：点 ⇄ 对比原音、▷ 回放，或点「📊 评价发音」看评分和改正意见。'; act(); if (evalRun) { evalRun.cancel(); evalRun = null; clear(evalHost); } }
           }
         } catch (e) {
           session = null; mic.classList.remove('rec-on'); mic.textContent = '🎤';
@@ -115,26 +124,16 @@
       };
       back.onclick = playMine;
       cmp.onclick = async () => { await Sound.play(l.it, { rate: S.rate }); await UI.sleep(300); await playMine(); };
-      if (sr) {
-        sr.onclick = async () => {
-          tip.textContent = '请开口说…';
-          try {
-            const r = Sound.recognize();
-            const alts = await r.promise;
-            if (!alts.length) { tip.textContent = '没听清，再试一次。'; return; }
-            tip.textContent = '识别为：「' + alts[0] + '」 · 匹配度 ' + Math.round(100 * Sound.matchScore(alts, l.it)) + '%';
-            act();
-          } catch (e) { tip.textContent = '语音识别不可用（需联网的 Chrome / Edge / Safari）。请用录音对比 + 自评。'; }
-        };
-      }
       const rate = ratingBar((v, first) => { if (first && !rated.has(idx)) { rated.add(idx); Store.record('speak', v >= 1); act(); } });
       stage.append(box.el,
         h('div', { class: 'big-btns' },
           h('button', { class: 'btn lg primary', type: 'button', text: '▶ 原音', onclick: () => Sound.play(l.it, { rate: S.rate }) }),
           h('button', { class: 'btn lg', type: 'button', text: '🐢 慢速', onclick: () => Sound.play(l.it, { rate: 0.7 }) })),
-        h('div', { class: 'big-btns', style: { marginTop: '12px' } }, mic, cmp, back, sr),
+        h('div', { class: 'big-btns', style: { marginTop: '12px' } }, mic, cmp, back),
+        h('div', { class: 'big-btns', style: { marginTop: '10px' } }, evalBtn),
         h('div', { style: { height: '8px' } }), tip,
-        h('div', { class: 'row center', style: { marginTop: '10px' } }, h('span', { class: 'lbl', text: '这句像不像？' }), rate));
+        h('div', { class: 'row center', style: { marginTop: '10px' } }, h('span', { class: 'lbl', text: '这句像不像？' }), rate),
+        evalHost);
     }
 
     // ---------- 🧩 意群跟读 ----------
